@@ -1,0 +1,20 @@
+# Entorno virtual (No subir la carpeta pesada de Python)
+venv/
+ENV/
+env/
+
+# Archivos de configuración secreta (¡El candado de seguridad!)
+.env
+
+# Bases de datos locales (Para que no suba el db.sqlite3 de prueba)
+*.sqlite3
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Carpetas de configuración del editor
+.vscode/
+.idea/
