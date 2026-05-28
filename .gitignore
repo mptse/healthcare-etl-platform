@@ -1,20 +1,12 @@
-# Entorno virtual (No subir la carpeta pesada de Python)
-venv/
-ENV/
-env/
-
-# Archivos de configuración secreta (¡El candado de seguridad!)
+# Ocultar credenciales y contraseñas
 .env
+backend/.env
 
-# Bases de datos locales (Para que no suba el db.sqlite3 de prueba)
-*.sqlite3
+# Ocultar la carpeta del entorno virtual (no se debe subir a GitHub)
+venv/
+env/
 
 # Archivos temporales de Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Carpetas de configuración del editor
-.vscode/
-.idea/
+.DS_Store
