@@ -1,31 +1,37 @@
 from django.db import models
 
 class Paciente(models.Model):
-    # Campos básicos del paciente (La Cédula será la Llave Primaria)
-    cedula = models.CharField(max_length=20, unique=True, primary_key=True)
-    nombre_completo = models.CharField(max_length=150)
+    # Usaremos un ID automático de Django para simplificar, 
+    # pero si tienes una cédula en el Excel, podemos ajustarlo después.
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
     edad = models.IntegerField()
-    genero = models.CharField(max_length=20)  # Masculino, Femenino, Otro
-    ciudad = models.CharField(max_length=100)
-
+    sexo = models.CharField(max_length=20)
+    
     def __str__(self):
-        return f"{self.nombre_completo} ({self.cedula})"
+        return f"{self.nombres} {self.apellidos}"
 
 class RegistroClinico(models.Model):
-    # Conectamos cada registro con un Paciente específico usando una Llave Foránea
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='historial')
     
-    # Datos médicos que se extraerán del archivo de Excel
-    fecha_visita = models.DateField()
-    presion_arterial = models.CharField(max_length=20)  # Ejemplo: "120/80"
-    nivel_azucar = models.FloatField()                  # Glucosa en sangre
+    # Datos médicos del Excel
+    peso = models.FloatField()
+    altura = models.FloatField()
+    imc = models.FloatField()
+    presion_sistolica = models.IntegerField()
+    presion_diastolica = models.IntegerField()
+    frecuencia_cardiaca = models.IntegerField()
+    glucosa = models.FloatField()
     colesterol = models.IntegerField()
-    
-    # Diagnóstico médico y el resultado que calculará la Inteligencia Artificial
-    diagnostico = models.TextField()
-    prediccion_riesgo = models.CharField(max_length=50, blank=True, null=True) # Alto, Medio, Bajo
-    
-    created_at = models.DateTimeField(auto_now_add=True)
+    saturacion_oxigeno = models.FloatField()
+    temperatura = models.FloatField()
+    antecedentes_familiares = models.TextField()
+    fumador = models.BooleanField()
+    consumo_alcohol = models.BooleanField()
+    actividad_fisica = models.CharField(max_length=50)
+    diagnostico_preliminar = models.TextField()
+    riesgo_enfermedad = models.CharField(max_length=50)
+    fecha_consulta = models.DateField()
 
     def __str__(self):
-        return f"Registro de {self.paciente.nombre_completo} - {self.fecha_visita}"
+        return f"Registro: {self.paciente.nombres} - {self.fecha_consulta}"
