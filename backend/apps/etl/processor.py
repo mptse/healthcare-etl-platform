@@ -1,29 +1,53 @@
 import pandas as pd
-from apps.etl.models import Paciente # Asegúrate de que este es el nombre de tu modelo
+import numpy as np
+from apps.etl.models import Paciente, RegistroClinico
 
 def run_etl():
     # 1. Extracción
-    file_path = 'dataset_clinico_etl_1800_registros.xlsx'
+    file_path = 'dataset_clinico_etl_1800_registros (1).xlsx'
     df = pd.read_excel(file_path)
 
     # 2. Transformación
-    # Corregir errores comunes (ejemplo: hipertensión mal escrita)
-    df['diagnostico_preliminar'] = df['diagnostico_preliminar'].replace(['hipertencion', 'hipertensión'], 'Hipertensión')
-    
-    # Eliminar duplicados si los hubiera
     df = df.drop_duplicates()
+    
+    # Manejo de Nulos
+    for col in df.select_dtypes(include=[np.number]).columns:
+        df[col] = df[col].fillna(df[col].mean())
+    
+    # Normalización de diagnóstico (ajustado a la tilde real)
+    df['diagnóstico_preliminar'] = df['diagnóstico_preliminar'].replace(
+        ['hipertencion', 'hipertension', 'hipertensión'], 'Hipertensión'
+    )
+
+    # Cálculo de IMC
+    df['IMC'] = df['peso'] / (df['altura'] ** 2)
 
     # 3. Carga
     for _, row in df.iterrows():
-        Paciente.objects.create(
+        paciente = Paciente.objects.create(
             nombres=row['nombres'],
             apellidos=row['apellidos'],
-            edad=row['edad'],
-            # ... (agrega aquí todos los campos de tu modelo)
-            riesgo_enfermedad=row['riesgo_enfermedad'],
-            fecha_consulta=row['fecha_consulta']
+            sexo=row['sexo']
         )
-    print("¡Carga masiva completada con éxito!")
-
-# Para ejecutarlo, abrirías la terminal y escribirías: python manage.py shell
-# Y luego: from apps.etl.processor import run_etl; run_etl()
+        
+        RegistroClinico.objects.create(
+            paciente=paciente,
+            fecha_consulta=row['fecha_consulta'],
+            presion_sistolica=row['presión_sistólica'],
+            presion_diastolica=row['presión_diastólica'],
+            frecuencia_cardiaca=row['frecuencia_cardiaca'],
+            glucosa=row['glucosa'],
+            peso=row['peso'],
+            altura=row['altura'],
+            imc=row['IMC'],
+            temperatura=row['temperatura'],
+            saturacion_oxigeno=row['saturación_oxígeno'],
+            fumador=row['fumador'],
+            consumo_alcohol=row['consumo_alcohol'],
+            actividad_fisica=row['actividad_física'],
+            antecedentes_familiares=row['antecedentes_familiares'],
+            diagnostico_preliminar=row['diagnóstico_preliminar'],
+            riesgo_enfermedad=row['riesgo_enfermedad']
+        )
+    
+    print("¡Proceso ETL completado con éxito!")
