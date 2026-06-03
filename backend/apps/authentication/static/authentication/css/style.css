@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
+
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    overflow: hidden; 
+    width: 100%;
+}
+
+/* La imagen de fondo cubre toda la pantalla */
+body {
+    background: url('/static/authentication/img/cerca-equipo-trabajadores-salud_23-2149112523.avif') no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Capa oscura para que el formulario resalte */
+.background-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Oscurece la imagen un 40% */
+}
+
+/* La caja flotante centrada */
+.login-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 40px;
+    border-radius: 20px;
+    width: 300px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeInDown 1s ease-out;
+}
+
+
+@keyframes fadeInDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-card h2 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.login-card p {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 30px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    background: #445e79;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.footer {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7); /* Color suave para que no distraiga */
+    font-size: 0.8rem;
+    font-weight: 300;
+}
+
+button:hover {
+    background: #34495e;
+}
+/* Ajuste para dispositivos móviles */
+@media (max-width: 480px) {
+    .login-card {
+        width: 85%;       /* Un poco más ancho en móviles para aprovechar el espacio */
+        padding: 25px;    /* Menos padding para que quepan más elementos */
+    }
+    
+    .login-card h2 {
+        font-size: 20px;  /* Título un poco más pequeño en celular */
+    }
+
+    button {
+        padding: 12px;    /* Botón un poquito más compacto */
+    }
+}
