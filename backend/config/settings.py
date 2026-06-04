@@ -12,12 +12,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import environ
 import os
+import dj_database_url
 from pathlib import Path
-
-# Inicializar environ para leer el .env
-env = environ.Env(
-    DEBUG=(bool, False)
-)
+from dotenv import load_dotenv
 
 # Definir la ruta base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,8 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Configurar claves seguras usando el .env
-SECRET_KEY = env('SECRET_KEY')
-DEBUG = env('DEBUG')
+SECRET_KEY = os.getenv('SECRET_KEY')
+DEBUG = os.getenv('DEBUG')
 
 
 # Application definition
@@ -83,14 +80,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
-    }
+    'default': dj_database_url.parse(os.getenv('SUPABASE_DB_URL'))
 }
 
 # Password validation

@@ -1,69 +1,73 @@
 import pandas as pd
-import time
-from django.db import DatabaseError
-from apps.etl.models import Paciente, RegistroClinico
+import numpy as np
+import logging
+from django.db import transaction
+from .models import Paciente, RegistroClinico
 
-def run_etl():
-    file_path = r'C:\Users\GLORIA ORTIZ\healthcare-etl-platform\backend\dataset_clinico_etl_1800_registros.xlsx'
-    
-    print("Cargando archivo...")
-    df = pd.read_excel(file_path)
-    df = df.drop_duplicates()
-    
-   # Limpieza de nulos y conversión a tipos de datos correctos
-    for col in df.columns:
-        if df[col].dtype in ['float64', 'int64']:
-            df[col] = df[col].fillna(0)
-        else:
-            df[col] = df[col].fillna('sin dato').astype(str).str.lower().str.strip()
+logger = logging.getLogger(__name__)
 
-    # --- NUEVA LÓGICA DE CONVERSIÓN BOOLEANA ---
-    def to_bool(val):
-        if isinstance(val, bool): return val
-        return str(val).lower() in ['true', 't', '1', 'si', 'sí']
-
-    df['fumador'] = df['fumador'].apply(to_bool)
-    df['consumo_alcohol'] = df['consumo_alcohol'].apply(to_bool)
-    # ---------------------------------------------
-    print("Iniciando carga a la base de datos...")
-    
-    for _, row in df.iterrows():
-        intentos = 0
-        max_intentos = 3
-        while intentos < max_intentos:
-            try:
-                # Creación del Paciente
-                paciente = Paciente.objects.create(
-                    nombres=row['nombres'],
-                    apellidos=row['apellidos'],
-                    sexo=row['sexo'],
-                    edad=int(row['edad'])
+def run_etl(file_path):
+    try:
+        # 1. Extracción
+        df = pd.read_excel(file_path)
+        
+        # 2. Transformación: Limpieza básica
+        # Normalizamos nombres de columnas para evitar errores de espacios o mayúsculas
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Convertimos todo el contenido a minúsculas para consistencia
+        df = df.map(lambda x: x.lower() if isinstance(x, str) else x)
+        
+        # Manejo de nulos: Media para números, "no especificado" para texto
+        cols_num = df.select_dtypes(include=[np.number]).columns
+        df[cols_num] = df[cols_num].fillna(df[cols_num].mean())
+        df = df.fillna("no especificado")
+        
+        # 3. Carga masiva usando transacciones para integridad de datos
+        with transaction.atomic():
+            for _, row in df.iterrows():
+                # Buscamos o creamos al paciente usando su 'identificacion' como llave única
+                # Asegúrate de que en tu Excel exista la columna 'identificacion'
+                paciente, created = Paciente.objects.get_or_create(
+                    identificacion=str(row['identificacion']),
+                    defaults={
+                        'nombres': row['nombres'],
+                        'apellidos': row['apellidos'],
+                        'edad': int(row['edad']),
+                        'sexo': row['sexo']
+                    }
                 )
                 
-                # Creación del Registro Clínico (usando los nombres exactos de tu lista)
+                # Creamos el registro clínico asociado
                 RegistroClinico.objects.create(
                     paciente=paciente,
-                    fecha_consulta=row['fecha_consulta'],
-                    presion_sistolica=row['presión_sistólica'],
-                    presion_diastolica=row['presión_diastólica'],
-                    frecuencia_cardiaca=row['frecuencia_cardiaca'],
-                    glucosa=row['glucosa'],
-                    colesterol=row['colesterol'],
-                    peso=row['peso'],
-                    altura=row['altura'],
-                    imc=row['IMC'],
-                    temperatura=row['temperatura'],
-                    saturacion_oxigeno=row['saturación_oxígeno'],
-                    fumador=row['fumador'],
-                    consumo_alcohol=row['consumo_alcohol'],
-                    actividad_fisica=row['actividad_física'],
+                    peso=float(row['peso']),
+                    altura=float(row['altura']),
+                    imc=float(row['imc']),
+                    presion_sistolica=int(row['presión_sistólica']),
+                    presion_diastolica=int(row['presión_diastolica']),
+                    frecuencia_cardiaca=int(row['frecuencia_cardiaca']),
+                    glucosa=float(row['glucosa']),
+                    colesterol=int(row['colesterol']),
+                    saturacion_oxigeno=float(row['saturación_oxígeno']),
+                    temperatura=float(row['temperatura']),
                     antecedentes_familiares=row['antecedentes_familiares'],
+                    fumador=(str(row['fumador']).lower() == 'true' or str(row['fumador']) == '1'),
+                    consumo_alcohol=(str(row['consumo_alcohol']).lower() == 'true' or str(row['consumo_alcohol']) == '1'),
+                    actividad_fisica=row['actividad_física'],
                     diagnostico_preliminar=row['diagnóstico_preliminar'],
-                    riesgo_enfermedad=row['riesgo_enfermedad']
+                    riesgo_enfermedad=row['riesgo_enfermedad'],
+                    fecha_consulta=pd.to_datetime(row['fecha_consulta']).date()
                 )
-                break # Éxito, salimos del while
-            except DatabaseError:
-                intentos += 1
-                time.sleep(1)
-    
-    print("¡Proceso ETL completado con éxito!")
+                
+        logger.info("ETL finalizado con éxito.")
+        return True
+
+    except KeyError as e:
+        logger.error(f"Error: La columna {e} no existe en el archivo Excel.")
+        return False
+    except Exception as e:
+        logger.error(f"Error inesperado en ETL: {e}")
+        return False
+
+        
