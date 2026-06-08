@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h2>Dashboard del Analista</h2>
+            <hr>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm p-4">
+                <h5>Total Pacientes</h5>
+                <p class="display-4">{{ total_pacientes }}</p>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm p-4">
+                <h5>Distribución por Riesgo</h5>
+                <canvas id="riesgoChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ datos_riesgo|json_script:"datos-riesgo" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const datosRiesgo = JSON.parse(document.getElementById('datos-riesgo').textContent);
+        
+        const ctx = document.getElementById('riesgoChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Bajo', 'Medio', 'Crítico'],
+                datasets: [{
+                    data: datosRiesgo,
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    });
+</script>
+{% endblock %}

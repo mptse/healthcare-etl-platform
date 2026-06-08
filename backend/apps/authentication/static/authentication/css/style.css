@@ -70,12 +70,14 @@ body {
     box-sizing: border-box;
 }
 
+
+
 button {
     width: 100%;
     padding: 14px;
-    background: #445e79;
+    background-color: #445e79;
     color: white;
-    border: none;
+     border-color: #445e79;
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;

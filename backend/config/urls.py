@@ -1,13 +1,13 @@
 from django.contrib import admin
-from django.urls import path, include 
+from django.urls import path, include
+# ¡Aquí está el import que faltaba!
+from django.shortcuts import redirect 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # Mantenemos tu login, pero es buena práctica darle un prefijo como 'auth/'
-    # Así separas claramente las rutas de seguridad de las rutas de negocio
-    path('auth/', include('apps.authentication.urls')), 
-    
-    # Aquí integramos la nueva app de analítica
+    # Ahora 'redirect' ya está definido y funcionará correctamente
+    path('', lambda request: redirect('login')), 
     path('dashboard/', include('apps.analytics.urls')),
+    path('auth/', include('apps.authentication.urls')),
 ]

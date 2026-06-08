@@ -61,7 +61,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -121,3 +121,13 @@ STATIC_URL = 'static/'
 
 
 AUTH_USER_MODEL = 'authentication.UsuarioPersonalizado'
+
+
+
+# settings.py
+
+# Esto le dice a Django: "Cuando necesites el login, busca la ruta llamada 'login'"
+LOGIN_URL = 'login' 
+
+# Esto le dice a Django a dónde ir después de loguearse correctamente
+LOGIN_REDIRECT_URL = 'dashboard_principal'
