@@ -65,27 +65,36 @@
         {% with grupo=request.user.groups.all.0.name %}
             {% if grupo == 'Analista' %}
                 <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'dashboard_analista' %}">
+                    <a class="nav-link" href="{% url 'dashboard_analista' %}">
                         <i class="bi bi-bar-chart-fill"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'ml_dashboard' %}">
+                        <i class="bi bi-cpu-fill"></i> Machine Learning
                     </a>
                 </li>
             {% elif grupo == 'Médico' %}
                 <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'dashboard_medico' %}">
+                    <a class="nav-link" href="{% url 'dashboard_medico' %}">
                         <i class="bi bi-heart-pulse"></i> Dashboard
                     </a>
                 </li>
             {% else %}
                 <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'dashboard_admin' %}">
+                    <a class="nav-link" href="{% url 'dashboard_admin' %}">
                         <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'ml_dashboard' %}">
+                        <i class="bi bi-cpu-fill"></i> Machine Learning
                     </a>
                 </li>
             {% endif %}
         {% endwith %}
     </ul>
 
-    <!-- LOGOUT CORREGIDO: usa POST con csrf_token -->
     <div class="position-absolute bottom-0 w-100 p-3">
         <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
