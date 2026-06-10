@@ -1,52 +1,151 @@
 {% extends 'base.html' %}
+{% block page_title %}Dashboard Analista{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-12">
-            <h2>Dashboard del Analista</h2>
-            <hr>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card kpi-card p-3">
+            <div class="text-muted small">Total Pacientes</div>
+            <div class="fs-3 fw-bold text-primary">{{ total_pacientes }}</div>
+            <i class="bi bi-people-fill text-primary opacity-25 fs-1 position-absolute end-0 me-3"></i>
         </div>
     </div>
-
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card shadow-sm p-4">
-                <h5>Total Pacientes</h5>
-                <p class="display-4">{{ total_pacientes }}</p>
-            </div>
+    <div class="col-md-3">
+        <div class="card kpi-card danger p-3">
+            <div class="text-muted small">Pacientes Críticos</div>
+            <div class="fs-3 fw-bold text-danger">{{ resumen_riesgo.Crítico|default:0 }}</div>
         </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card warning p-3">
+            <div class="text-muted small">Riesgo Alto</div>
+            <div class="fs-3 fw-bold text-warning">{{ resumen_riesgo.Alto|default:0 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card success p-3">
+            <div class="text-muted small">Riesgo Bajo</div>
+            <div class="fs-3 fw-bold text-success">{{ resumen_riesgo.Bajo|default:0 }}</div>
+        </div>
+    </div>
+</div>
 
-        <div class="col-md-8">
-            <div class="card shadow-sm p-4">
-                <h5>Distribución por Riesgo</h5>
-                <canvas id="riesgoChart" height="100"></canvas>
+<div class="row g-3 mb-4">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h6 class="fw-semibold mb-3">Distribución por Riesgo</h6>
+            <canvas id="riesgoChart" height="220"></canvas>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-4">
+            <h6 class="fw-semibold mb-3">Promedios Clínicos</h6>
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">Glucosa promedio</div>
+                        <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_glucosa|floatformat:1 }} mg/dL</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">Colesterol promedio</div>
+                        <div class="fs-5 fw-bold text-warning">{{ promedios.promedio_colesterol|floatformat:1 }} mg/dL</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">IMC promedio</div>
+                        <div class="fs-5 fw-bold text-info">{{ promedios.promedio_imc|floatformat:1 }}</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">Presión sistólica prom.</div>
+                        <div class="fs-5 fw-bold text-danger">{{ promedios.promedio_presion_sis|floatformat:0 }} mmHg</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">Frec. cardíaca prom.</div>
+                        <div class="fs-5 fw-bold text-success">{{ promedios.promedio_frecuencia|floatformat:0 }} bpm</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light rounded p-3 text-center">
+                        <div class="text-muted small">Saturación O₂ prom.</div>
+                        <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_saturacion|floatformat:1 }}%</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-{{ datos_riesgo|json_script:"datos-riesgo" }}
+<div class="card p-4">
+    <h6 class="fw-semibold mb-3">Últimos Pacientes Críticos / Alto Riesgo</h6>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Paciente</th>
+                    <th>Edad</th>
+                    <th>Sexo</th>
+                    <th>Glucosa</th>
+                    <th>Presión</th>
+                    <th>IMC</th>
+                    <th>Riesgo</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in pacientes_criticos %}
+                <tr>
+                    <td>{{ r.paciente.nombres }} {{ r.paciente.apellidos }}</td>
+                    <td>{{ r.paciente.edad }}</td>
+                    <td>{{ r.paciente.sexo }}</td>
+                    <td>{{ r.glucosa }}</td>
+                    <td>{{ r.presion_sistolica }}/{{ r.presion_diastolica }}</td>
+                    <td>{{ r.imc|floatformat:1 }}</td>
+                    <td>
+                        {% if r.riesgo_enfermedad == 'Crítico' %}
+                            <span class="badge bg-danger">Crítico</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Alto</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.fecha_consulta }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted">No hay registros críticos</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ datos_riesgo|json_script:"datos-riesgo" }}
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const datosRiesgo = JSON.parse(document.getElementById('datos-riesgo').textContent);
-        
-        const ctx = document.getElementById('riesgoChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Bajo', 'Medio', 'Crítico'],
-                datasets: [{
-                    data: datosRiesgo,
-                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
-                }]
-            },
-            options: {
-                responsive: true
-            }
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    const datos = JSON.parse(document.getElementById('datos-riesgo').textContent);
+    new Chart(document.getElementById('riesgoChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Bajo', 'Medio', 'Alto', 'Crítico'],
+            datasets: [{
+                data: datos,
+                backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
     });
+});
 </script>
 {% endblock %}

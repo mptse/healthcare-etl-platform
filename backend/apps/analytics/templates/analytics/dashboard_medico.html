@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block page_title %}Dashboard Médico{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card kpi-card danger p-3">
+            <div class="text-muted small">Pacientes Críticos/Alto</div>
+            <div class="fs-3 fw-bold text-danger">{{ stats.criticos }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card warning p-3">
+            <div class="text-muted small">Hipertensos</div>
+            <div class="fs-3 fw-bold text-warning">{{ stats.hipertensos }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card info p-3">
+            <div class="text-muted small">Glucosa Alta</div>
+            <div class="fs-3 fw-bold text-info">{{ stats.glucosa_alta }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card p-3">
+            <div class="text-muted small">Sat. O₂ Baja (&lt;90%)</div>
+            <div class="fs-3 fw-bold text-primary">{{ stats.saturacion_baja }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4">
+    <h6 class="fw-semibold mb-3">Pacientes en Alerta — Crítico y Alto Riesgo</h6>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Paciente</th>
+                    <th>Edad</th>
+                    <th>Sexo</th>
+                    <th>Diagnóstico</th>
+                    <th>Glucosa</th>
+                    <th>Presión</th>
+                    <th>Sat. O₂</th>
+                    <th>Riesgo</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in pacientes_alerta %}
+                <tr>
+                    <td><strong>{{ r.paciente.nombres }} {{ r.paciente.apellidos }}</strong></td>
+                    <td>{{ r.paciente.edad }}</td>
+                    <td>{{ r.paciente.sexo }}</td>
+                    <td>{{ r.diagnostico_preliminar }}</td>
+                    <td>{{ r.glucosa }}</td>
+                    <td>{{ r.presion_sistolica }}/{{ r.presion_diastolica }}</td>
+                    <td>
+                        {% if r.saturacion_oxigeno < 90 %}
+                            <span class="text-danger fw-bold">{{ r.saturacion_oxigeno }}%</span>
+                        {% else %}
+                            {{ r.saturacion_oxigeno }}%
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.riesgo_enfermedad == 'Crítico' %}
+                            <span class="badge bg-danger">Crítico</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Alto</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.fecha_consulta }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center text-muted">Sin pacientes en alerta</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
