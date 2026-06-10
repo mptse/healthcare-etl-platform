@@ -10,4 +10,5 @@ urlpatterns = [
     path('', lambda request: redirect('login')), 
     path('dashboard/', include('apps.analytics.urls')),
     path('auth/', include('apps.authentication.urls')),
+    path('ml/', include('apps.ml.urls')),
 ]

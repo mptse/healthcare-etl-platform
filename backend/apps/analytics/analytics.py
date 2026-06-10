@@ -14,7 +14,7 @@ def obtener_promedios_clinicos():
         promedio_saturacion=Avg('saturacion_oxigeno'),
     )
 
-def listar_pacientes_criticos(limite=20):
+def listar_pacientes_criticos(limite=None):
     return RegistroClinico.objects.select_related('paciente').filter(
         riesgo_enfermedad__in=['Crítico', 'Alto']
     ).order_by('-fecha_consulta')[:limite]
