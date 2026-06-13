@@ -74,12 +74,40 @@
                         <i class="bi bi-cpu-fill"></i> Machine Learning
                     </a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'historial_etl' %}">
+                      <i class="bi bi-clock-history"></i> Historial ETL
+                  </a>
+               </li>
+                <li class="nav-item">
+                   <a class="nav-link" href="{% url 'exportar_csv' %}">
+                      <i class="bi bi-filetype-csv"></i> Exportar CSV
+                   </a>
+               </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'exportar_excel' %}">
+                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                  </a>
+                </li>
+
+
             {% elif grupo == 'Médico' %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'dashboard_medico' %}">
                         <i class="bi bi-heart-pulse"></i> Dashboard
                     </a>
                 </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'exportar_csv' %}">
+                     <i class="bi bi-filetype-csv"></i> Exportar CSV
+                 </a>
+              </li>
+               <li class="nav-item">
+                 <a class="nav-link" href="{% url 'exportar_excel' %}">
+                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                 </a>
+               </li>
             {% else %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'dashboard_admin' %}">
@@ -91,6 +119,21 @@
                         <i class="bi bi-cpu-fill"></i> Machine Learning
                     </a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'historial_etl' %}">
+                     <i class="bi bi-clock-history"></i> Historial ETL
+                 </a>
+              </li>
+              <li class="nav-item">
+                  <a class="nav-link" href="{% url 'exportar_csv' %}">
+                     <i class="bi bi-filetype-csv"></i> Exportar CSV
+                  </a>
+              </li>
+              <li class="nav-item">
+                 <a class="nav-link" href="{% url 'exportar_excel' %}">
+                      <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                  </a>
+              </li>
             {% endif %}
         {% endwith %}
     </ul>

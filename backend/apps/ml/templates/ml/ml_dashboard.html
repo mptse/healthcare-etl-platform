@@ -4,10 +4,11 @@
 {% block content %}
 <div class="row g-4">
 
+    <!-- Panel izquierdo -->
     <div class="col-md-4">
-        <div class="card p-4">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-cpu me-2"></i>Entrenar Modelo</h6>
-            <p class="text-muted small">Entrena un Random Forest con los 1800 registros clínicos cargados en la base de datos.</p>
+        <div class="card p-4 mb-3">
+            <h6 class="fw-semibold mb-2"><i class="bi bi-cpu me-2"></i>Entrenar Modelo</h6>
+            <p class="text-muted small mb-3">Random Forest con 1800 registros clínicos. Variables: edad, IMC, glucosa, colesterol, presión, frecuencia cardíaca, saturación O₂, fumador.</p>
             <form method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="accion" value="entrenar">
@@ -17,17 +18,21 @@
             </form>
         </div>
 
-        <div class="card p-4 mt-3">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2"></i>Historial de Modelos</h6>
             {% for m in historial %}
             <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                 <div>
                     <div class="small fw-semibold">{{ m.algoritmo }}</div>
                     <div class="text-muted" style="font-size:0.75rem">{{ m.fecha_entrenamiento|date:"d/m/Y H:i" }}</div>
+                    <div class="text-muted" style="font-size:0.72rem">{{ m.total_registros }} registros</div>
                 </div>
-                <span class="badge {% if m.activo %}bg-success{% else %}bg-secondary{% endif %}">
-                    {{ m.accuracy|floatformat:1 }}%
-                </span>
+                <div class="text-end">
+                    <span class="badge {% if m.activo %}bg-success{% else %}bg-secondary{% endif %}">
+                      {% widthratio m.accuracy 1 100 %}%
+                    </span>
+                    {% if m.activo %}<br><small class="text-success" style="font-size:0.7rem">Activo</small>{% endif %}
+                </div>
             </div>
             {% empty %}
             <p class="text-muted small">Sin modelos entrenados aún.</p>
@@ -35,125 +40,135 @@
         </div>
     </div>
 
+    <!-- Panel derecho -->
     <div class="col-md-8">
         {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ error }}</div>
         {% endif %}
 
         {% if resultado %}
         <div class="card p-4 mb-4">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-2"></i>Métricas del Modelo</h6>
+            <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-2"></i>Métricas del Modelo — {{ resultado.algoritmo }}</h6>
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="bg-light rounded p-3 text-center">
                         <div class="text-muted small">Accuracy</div>
-                        <div class="fs-4 fw-bold text-primary">{{ resultado.accuracy }}%</div>
+                        <div class="fs-3 fw-bold text-primary">{{ resultado.accuracy }}%</div>
+                        <small class="text-muted">Predicciones correctas</small>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="bg-light rounded p-3 text-center">
                         <div class="text-muted small">Precision</div>
-                        <div class="fs-4 fw-bold text-success">{{ resultado.precision }}%</div>
+                        <div class="fs-3 fw-bold text-success">{{ resultado.precision }}%</div>
+                        <small class="text-muted">TP / (TP+FP)</small>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="bg-light rounded p-3 text-center">
                         <div class="text-muted small">Recall</div>
-                        <div class="fs-4 fw-bold text-warning">{{ resultado.recall }}%</div>
+                        <div class="fs-3 fw-bold text-warning">{{ resultado.recall }}%</div>
+                        <small class="text-muted">TP / (TP+FN)</small>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="bg-light rounded p-3 text-center">
                         <div class="text-muted small">F1-Score</div>
-                        <div class="fs-4 fw-bold text-info">{{ resultado.f1_score }}%</div>
+                        <div class="fs-3 fw-bold text-info">{{ resultado.f1_score }}%</div>
+                        <small class="text-muted">Media armónica</small>
                     </div>
                 </div>
             </div>
 
-            <h6 class="fw-semibold mb-2">Matriz de Confusión</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered text-center align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Real \ Pred</th>
-                            {% for clase in resultado.clases %}
-                            <th>{{ clase }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for fila in resultado.matriz_confusion %}
-                        <tr>
-                            <th class="table-light">{{ resultado.clases|slice:forloop.counter0|last }}</th>
-                            {% for val in fila %}
-                            <td {% if forloop.parentloop.counter0 == forloop.counter0 %}class="table-success fw-bold"{% endif %}>
-                                {{ val }}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h6 class="fw-semibold mb-2 small">Matriz de Confusión</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Real \ Pred</th>
+                                    {% for clase in resultado.clases %}<th>{{ clase }}</th>{% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in resultado.matriz_confusion %}
+                                <tr>
+                                    <th class="table-light">{{ resultado.clases|slice:forloop.counter0|last }}</th>
+                                    {% for val in fila %}
+                                    <td {% if forloop.parentloop.counter0 == forloop.counter0 %}class="table-success fw-bold"{% endif %}>{{ val }}</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-semibold mb-2 small">Distribución de Predicciones</h6>
+                    <canvas id="metricasChart" height="180"></canvas>
+                </div>
             </div>
         </div>
         {% endif %}
 
+        <!-- Predicción individual -->
         <div class="card p-4">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-person-check me-2"></i>Predicción Individual</h6>
+            <h6 class="fw-semibold mb-3"><i class="bi bi-person-check me-2"></i>Predicción Individual de Riesgo</h6>
             <form method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="accion" value="predecir">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label small">Edad</label>
+                        <label class="form-label small fw-semibold">Edad</label>
                         <input type="number" name="edad" class="form-control" placeholder="35" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">IMC</label>
+                        <label class="form-label small fw-semibold">IMC</label>
                         <input type="number" step="0.1" name="imc" class="form-control" placeholder="25.0" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Glucosa (mg/dL)</label>
+                        <label class="form-label small fw-semibold">Glucosa (mg/dL)</label>
                         <input type="number" step="0.1" name="glucosa" class="form-control" placeholder="100" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Colesterol (mg/dL)</label>
+                        <label class="form-label small fw-semibold">Colesterol (mg/dL)</label>
                         <input type="number" name="colesterol" class="form-control" placeholder="180" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Presión Sistólica</label>
+                        <label class="form-label small fw-semibold">Presión Sistólica</label>
                         <input type="number" name="presion_sis" class="form-control" placeholder="120" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Presión Diastólica</label>
+                        <label class="form-label small fw-semibold">Presión Diastólica</label>
                         <input type="number" name="presion_dias" class="form-control" placeholder="80" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Frecuencia Cardíaca</label>
+                        <label class="form-label small fw-semibold">Frecuencia Cardíaca</label>
                         <input type="number" name="frecuencia" class="form-control" placeholder="70" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Saturación O₂ (%)</label>
+                        <label class="form-label small fw-semibold">Saturación O₂ (%)</label>
                         <input type="number" step="0.1" name="saturacion" class="form-control" placeholder="98" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small">Temperatura (°C)</label>
+                        <label class="form-label small fw-semibold">Temperatura (°C)</label>
                         <input type="number" step="0.1" name="temperatura" class="form-control" placeholder="36.5" required>
                     </div>
                     <div class="col-md-6">
                         <div class="form-check mt-3">
                             <input class="form-check-input" type="checkbox" name="fumador" id="fumador">
-                            <label class="form-check-label" for="fumador">Fumador</label>
+                            <label class="form-check-label fw-semibold" for="fumador">Fumador</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-check mt-3">
                             <input class="form-check-input" type="checkbox" name="consumo_alcohol" id="consumo_alcohol">
-                            <label class="form-check-label" for="consumo_alcohol">Consumo de Alcohol</label>
+                            <label class="form-check-label fw-semibold" for="consumo_alcohol">Consumo de Alcohol</label>
                         </div>
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-success px-4">
                             <i class="bi bi-lightning-fill me-1"></i> Predecir Riesgo
                         </button>
                     </div>
@@ -163,26 +178,62 @@
             {% if prediccion %}
             <hr>
             <div class="alert {% if prediccion.riesgo == 'Crítico' %}alert-danger{% elif prediccion.riesgo == 'Alto' %}alert-warning{% elif prediccion.riesgo == 'Medio' %}alert-info{% else %}alert-success{% endif %} mt-3">
-                <h5 class="mb-1">Riesgo Predicho: <strong>{{ prediccion.riesgo }}</strong></h5>
-                <div class="mt-2">
-                    {% for clase, prob in prediccion.probabilidades.items %}
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span>{{ clase }}</span>
-                        <span>{{ prob }}%</span>
-                    </div>
-                    <div class="progress mb-2" style="height:6px">
-                        <div class="progress-bar" role="progressbar" data-width="{{ prob }}"></div>
-                    </div>
-                    <script>
-                        document.querySelectorAll('[data-width]').forEach(el => {
-                            el.style.width = el.getAttribute('data-width') + '%';
-                        });
-                    </script>
-                    {% endfor %}
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-{% if prediccion.riesgo == 'Crítico' %}exclamation-triangle-fill{% elif prediccion.riesgo == 'Alto' %}arrow-up-circle-fill{% else %}check-circle-fill{% endif %} me-2 fs-4"></i>
+                   <h5 class="mb-0">Riesgo Predicho: <strong>{{ prediccion.riesgo }}</strong></h5>
+                   {% if prediccion.riesgo_clinico %}
+                   <small class="text-muted">Confirmado por reglas clínicas: <strong>{{ prediccion.riesgo_clinico }}</strong></small>
+                   {% endif %}   
                 </div>
+                <p class="mb-2 small">Probabilidades por clase:</p>
+                {% for clase, prob in prediccion.probabilidades.items %}
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>{{ clase }}</span><span>{{ prob }}%</span>
+                </div>
+                <div class="progress mb-2" style="height:8px">
+                    <div class="progress-bar {% if clase == 'Crítico' %}bg-danger{% elif clase == 'Alto' %}bg-warning{% elif clase == 'Medio' %}bg-info{% else %}bg-success{% endif %}"
+                         style="width:{{ prob }}%"></div>
+                </div>
+                {% endfor %}
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+{% if resultado %}
+{{ resultado.accuracy|json_script:"acc" }}
+{{ resultado.precision|json_script:"prec" }}
+{{ resultado.recall|json_script:"rec" }}
+{{ resultado.f1_score|json_script:"f1" }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if resultado %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const parse = id => JSON.parse(document.getElementById(id).textContent);
+    new Chart(document.getElementById('metricasChart'), {
+        type: 'radar',
+        data: {
+            labels: ['Accuracy','Precision','Recall','F1-Score'],
+            datasets: [{
+                label: 'Métricas (%)',
+                data: [parse('acc'), parse('prec'), parse('rec'), parse('f1')],
+                backgroundColor: 'rgba(13,110,253,0.15)',
+                borderColor: '#0d6efd',
+                pointBackgroundColor: '#0d6efd',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { r: { beginAtZero: true, max: 100 } },
+            plugins: { legend: { display: false } }
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

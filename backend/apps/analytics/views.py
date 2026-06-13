@@ -15,12 +15,14 @@ from .analytics import (
 )
 
 
-# ── Vistas web ───────────────────────────────────────────────────────
 @login_required
 @role_required(allowed_roles=['Analista'])
 def dashboard_analista(request):
     resumen_qs = obtener_resumen_riesgo()
     resumen = {item['riesgo_enfermedad']: item['total'] for item in resumen_qs}
+    segmentacion = obtener_segmentacion()
+    estadisticas = obtener_estadistica_descriptiva()
+
     context = {
         'total_pacientes': sum(resumen.values()),
         'datos_riesgo': [
@@ -31,7 +33,15 @@ def dashboard_analista(request):
         ],
         'resumen_riesgo': resumen,
         'promedios': obtener_promedios_clinicos(),
-        'pacientes_criticos': listar_pacientes_criticos(limite=5),
+        'pacientes_criticos': listar_pacientes_criticos(limite=10),
+        'segmentacion': segmentacion,
+        'estadisticas': estadisticas,
+        'datos_sexo': [s['total'] for s in segmentacion['por_sexo']],
+        'labels_sexo': [s['sexo'] for s in segmentacion['por_sexo']],
+        'datos_edad': list(segmentacion['por_edad'].values()),
+        'labels_edad': list(segmentacion['por_edad'].keys()),
+        'datos_imc': list(segmentacion['por_imc'].values()),
+        'labels_imc': list(segmentacion['por_imc'].keys()),
     }
     return render(request, 'analytics/dashboard_analista.html', context)
 
@@ -41,7 +51,6 @@ def dashboard_analista(request):
 def dashboard_medico(request):
     context = {
         'pacientes_alerta': listar_pacientes_criticos(),
-        'total_criticos': listar_pacientes_criticos().count(),
         'stats': obtener_estadisticas_medico(),
     }
     return render(request, 'analytics/dashboard_medico.html', context)
@@ -50,7 +59,15 @@ def dashboard_medico(request):
 @login_required
 @role_required(allowed_roles=['Admin'])
 def dashboard_admin(request):
+    segmentacion = obtener_segmentacion()
     context = obtener_kpis_admin()
+    context.update({
+        'segmentacion': segmentacion,
+        'datos_sexo': [s['total'] for s in segmentacion['por_sexo']],
+        'labels_sexo': [s['sexo'] for s in segmentacion['por_sexo']],
+        'datos_edad': list(segmentacion['por_edad'].values()),
+        'labels_edad': list(segmentacion['por_edad'].keys()),
+    })
     return render(request, 'analytics/dashboard_admin.html', context)
 
 
@@ -66,41 +83,32 @@ def dashboard_redirect(request):
         return redirect('login')
 
 
-# ── APIs REST ────────────────────────────────────────────────────────
 class KPIsAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         return Response(obtener_kpis_admin())
 
-
 class EstadisticaDescriptivaAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         return Response(obtener_estadistica_descriptiva())
 
-
 class SegmentacionAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         return Response(obtener_segmentacion())
 
-
 class PacientesCriticosAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         pacientes = listar_pacientes_criticos()
         data = [{
             'id': r.id,
             'paciente': f"{r.paciente.nombres} {r.paciente.apellidos}",
-            'identificacion': r.paciente.identificacion,
             'riesgo': r.riesgo_enfermedad,
             'presion_sistolica': r.presion_sistolica,
             'glucosa': r.glucosa,
             'saturacion_oxigeno': r.saturacion_oxigeno,
-            'fecha_consulta': r.fecha_consulta,
+            'fecha_consulta': str(r.fecha_consulta),
         } for r in pacientes[:100]]
         return Response({'total': len(data), 'pacientes': data})

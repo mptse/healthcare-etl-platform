@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}Historial ETL{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Ejecuciones ETL</h6>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary rounded-pill">{{ historial|length }} ejecuciones</span>
+            <a href="{% url 'exportar_csv' %}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i> Exportar CSV
+            </a>
+            <a href="{% url 'exportar_excel' %}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Archivo</th>
+                    <th>Procesados</th>
+                    <th>Fallidos</th>
+                    <th>Tiempo</th>
+                    <th>Estado</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in historial %}
+                <tr>
+                    <td class="text-muted small">{{ h.id }}</td>
+                    <td class="small">{{ h.fecha_ejecucion|date:"d/m/Y H:i" }}</td>
+                    <td class="small">{{ h.usuario|default:"Sistema" }}</td>
+                    <td class="small text-muted">{{ h.archivo_fuente|truncatechars:25 }}</td>
+                    <td><span class="badge bg-primary">{{ h.registros_procesados }}</span></td>
+                    <td><span class="badge bg-danger">{{ h.registros_fallidos }}</span></td>
+                    <td class="small">{{ h.tiempo_ejecucion }}s</td>
+                    <td>
+                        {% if h.estado == 'exitoso' %}
+                            <span class="badge bg-success">Exitoso</span>
+                        {% elif h.estado == 'fallido' %}
+                            <span class="badge bg-danger">Fallido</span>
+                        {% else %}
+                            <span class="badge bg-secondary">En proceso</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if h.mensaje_error %}
+                        <span class="text-danger small">{{ h.mensaje_error|truncatechars:30 }}</span>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        No hay ejecuciones ETL registradas aún.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

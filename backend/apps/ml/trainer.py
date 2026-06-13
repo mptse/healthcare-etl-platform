@@ -7,27 +7,118 @@ from apps.etl.models import RegistroClinico
 from .models import ModeloML
 
 
+def calcular_riesgo_clinico(edad, imc, glucosa, colesterol, presion_sis,
+                             presion_dias, saturacion, fumador, consumo_alcohol):
+    """
+    Calcula el riesgo basado en reglas clínicas reales.
+    Retorna: 'Crítico', 'Alto', 'Medio', 'Bajo'
+    """
+    puntos = 0
+
+    # Presión sistólica
+    if presion_sis >= 180:
+        puntos += 4
+    elif presion_sis >= 160:
+        puntos += 3
+    elif presion_sis >= 140:
+        puntos += 2
+    elif presion_sis >= 130:
+        puntos += 1
+
+    # Glucosa
+    if glucosa >= 300:
+        puntos += 4
+    elif glucosa >= 200:
+        puntos += 3
+    elif glucosa >= 126:
+        puntos += 2
+    elif glucosa >= 100:
+        puntos += 1
+
+    # Saturación O₂
+    if saturacion < 85:
+        puntos += 4
+    elif saturacion < 90:
+        puntos += 3
+    elif saturacion < 94:
+        puntos += 1
+
+    # IMC
+    if imc >= 40:
+        puntos += 3
+    elif imc >= 35:
+        puntos += 2
+    elif imc >= 30:
+        puntos += 1
+    elif imc < 18.5:
+        puntos += 1
+
+    # Colesterol
+    if colesterol >= 280:
+        puntos += 2
+    elif colesterol >= 240:
+        puntos += 1
+
+    # Edad
+    if edad >= 70:
+        puntos += 2
+    elif edad >= 55:
+        puntos += 1
+
+    # Factores de riesgo
+    if fumador:
+        puntos += 2
+    if consumo_alcohol:
+        puntos += 1
+
+    # Clasificación
+    if puntos >= 10:
+        return 'Crítico'
+    elif puntos >= 6:
+        return 'Alto'
+    elif puntos >= 3:
+        return 'Medio'
+    else:
+        return 'Bajo'
+
+
+def recalcular_riesgos_bd():
+    """Recalcula y actualiza el riesgo de todos los registros en BD."""
+    registros = RegistroClinico.objects.select_related('paciente').all()
+    actualizados = 0
+
+    for r in registros:
+        nuevo_riesgo = calcular_riesgo_clinico(
+            edad=r.paciente.edad,
+            imc=r.imc,
+            glucosa=r.glucosa,
+            colesterol=r.colesterol,
+            presion_sis=r.presion_sistolica,
+            presion_dias=r.presion_diastolica,
+            saturacion=r.saturacion_oxigeno,
+            fumador=r.fumador,
+            consumo_alcohol=r.consumo_alcohol,
+        )
+        if r.riesgo_enfermedad != nuevo_riesgo:
+            r.riesgo_enfermedad = nuevo_riesgo
+            r.save(update_fields=['riesgo_enfermedad'])
+            actualizados += 1
+
+    print(f"Riesgos actualizados: {actualizados} de {registros.count()}")
+    return actualizados
+
+
 def entrenar_modelo():
-    # 1. Obtener datos
     registros = RegistroClinico.objects.select_related('paciente').values(
-        'paciente__edad',
-        'imc',
-        'glucosa',
-        'colesterol',
-        'presion_sistolica',
-        'presion_diastolica',
-        'frecuencia_cardiaca',
-        'saturacion_oxigeno',
-        'temperatura',
-        'fumador',
-        'consumo_alcohol',
-        'riesgo_enfermedad',
+        'paciente__edad', 'imc', 'glucosa', 'colesterol',
+        'presion_sistolica', 'presion_diastolica', 'frecuencia_cardiaca',
+        'saturacion_oxigeno', 'temperatura', 'fumador',
+        'consumo_alcohol', 'riesgo_enfermedad',
     )
 
     if len(registros) < 50:
         return None, "No hay suficientes datos para entrenar el modelo."
 
-    # 2. Preparar features y target
     X, y = [], []
     for r in registros:
         X.append([
@@ -46,21 +137,22 @@ def entrenar_modelo():
         y.append(r['riesgo_enfermedad'])
 
     X = np.array(X)
-
-    # 3. Encodear target
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
 
-    # 4. Split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y_encoded, test_size=0.2, random_state=42
     )
 
-    # 5. Entrenar Random Forest
-    modelo = RandomForestClassifier(n_estimators=100, random_state=42)
+    modelo = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=10,
+        min_samples_split=5,
+        random_state=42,
+        class_weight='balanced'
+    )
     modelo.fit(X_train, y_train)
 
-    # 6. Evaluar
     y_pred = modelo.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     prec = precision_score(y_test, y_pred, average='weighted', zero_division=0)
@@ -68,10 +160,8 @@ def entrenar_modelo():
     f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
     cm = confusion_matrix(y_test, y_pred)
 
-    # 7. Desactivar modelos anteriores
     ModeloML.objects.all().update(activo=False)
 
-    # 8. Guardar resultado en BD
     resultado = ModeloML.objects.create(
         algoritmo='Random Forest',
         accuracy=acc,
@@ -119,8 +209,21 @@ def predecir_riesgo(edad, imc, glucosa, colesterol, presion_sis,
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
 
-    modelo = RandomForestClassifier(n_estimators=100, random_state=42)
+    modelo = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=10,
+        min_samples_split=5,
+        random_state=42,
+        class_weight='balanced'
+    )
     modelo.fit(np.array(X), y_encoded)
+
+    # Calcular riesgo esperado con reglas clínicas
+    riesgo_esperado = calcular_riesgo_clinico(
+        edad=edad, imc=imc, glucosa=glucosa, colesterol=colesterol,
+        presion_sis=presion_sis, presion_dias=presion_dias,
+        saturacion=saturacion, fumador=fumador, consumo_alcohol=consumo_alcohol
+    )
 
     entrada = np.array([[edad, imc, glucosa, colesterol, presion_sis,
                          presion_dias, frecuencia, saturacion, temperatura,
@@ -131,6 +234,7 @@ def predecir_riesgo(edad, imc, glucosa, colesterol, presion_sis,
 
     return {
         'riesgo': le.inverse_transform([pred])[0],
+        'riesgo_clinico': riesgo_esperado,
         'probabilidades': {
             clase: round(float(prob) * 100, 1)
             for clase, prob in zip(le.classes_, proba)
