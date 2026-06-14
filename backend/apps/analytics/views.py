@@ -5,14 +5,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .decorators import role_required
 from .analytics import (
-    obtener_resumen_riesgo,
-    listar_pacientes_criticos,
-    obtener_promedios_clinicos,
-    obtener_kpis_admin,
-    obtener_estadisticas_medico,
-    obtener_estadistica_descriptiva,
+    obtener_resumen_riesgo, listar_pacientes_criticos,
+    obtener_promedios_clinicos, obtener_kpis_admin,
+    obtener_estadisticas_medico, obtener_estadistica_descriptiva,
     obtener_segmentacion,
 )
+from apps.etl.models import RegistroClinico
 
 
 @login_required
@@ -26,10 +24,8 @@ def dashboard_analista(request):
     context = {
         'total_pacientes': sum(resumen.values()),
         'datos_riesgo': [
-            resumen.get('Bajo', 0),
-            resumen.get('Medio', 0),
-            resumen.get('Alto', 0),
-            resumen.get('Crítico', 0),
+            resumen.get('Bajo', 0), resumen.get('Medio', 0),
+            resumen.get('Alto', 0), resumen.get('Crítico', 0),
         ],
         'resumen_riesgo': resumen,
         'promedios': obtener_promedios_clinicos(),
@@ -49,8 +45,10 @@ def dashboard_analista(request):
 @login_required
 @role_required(allowed_roles=['Médico'])
 def dashboard_medico(request):
+    # Trae todos los pacientes — el filtrado es en tiempo real con JS
+    qs = RegistroClinico.objects.select_related('paciente').all().order_by('-fecha_consulta')
     context = {
-        'pacientes_alerta': listar_pacientes_criticos(),
+        'pacientes_alerta': qs,
         'stats': obtener_estadisticas_medico(),
     }
     return render(request, 'analytics/dashboard_medico.html', context)
