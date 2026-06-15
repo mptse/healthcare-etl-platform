@@ -2,7 +2,7 @@ import time
 import unicodedata
 import pandas as pd
 from django.db import transaction
-from .models import Paciente, RegistroClinico
+from .models import Paciente, RegistroClinico, ETLLog
 
 
 def normalizar_columna(nombre):
@@ -53,107 +53,129 @@ def normalizar_riesgo(valor):
     return str(valor).strip()
 
 
-def run_etl(file_path):
-    """
-    Retorna un dict con: exito, registros_procesados, registros_fallidos,
-    tiempo_ejecucion, log_detalle, mensaje_error
-    """
-    logs = []
+def run_etl(file_path, usuario=None):
+    log = ETLLog.objects.create(
+        archivo_fuente=file_path,
+        usuario=usuario,
+        estado='en_proceso',
+    )
     inicio = time.time()
-    registros_fallidos = 0
 
     try:
-        logs.append("EXTRACT: Leyendo archivo...")
-        df = pd.read_excel(file_path)
-        logs.append(f"  → {len(df)} filas encontradas en el archivo.")
-
+        print("1. Leyendo archivo...")
+        df = pd.read_excel(file_path) if str(file_path).endswith('.xlsx') else pd.read_csv(file_path)
         df.columns = [normalizar_columna(c) for c in df.columns]
-        logs.append(f"  → Columnas: {list(df.columns)}")
+        print("   Columnas detectadas:", list(df.columns))
 
-        # TRANSFORM
-        logs.append("TRANSFORM: Limpiando datos...")
-        antes = len(df)
+        print("2. Procesando datos...")
+        total_original = len(df)
         df = df.dropna(subset=['id_paciente', 'fecha_consulta'])
         df = df.sort_values(by=['id_paciente', 'fecha_consulta'])
-        df = df.drop_duplicates(subset=['id_paciente', 'fecha_consulta'])
-        eliminados = antes - len(df)
-        logs.append(f"  → {eliminados} duplicados/nulos eliminados.")
+        df_sin_duplicados = df.drop_duplicates(subset=['id_paciente', 'fecha_consulta'])
+        duplicados = total_original - len(df_sin_duplicados)
+        df = df_sin_duplicados
 
         df = df.set_index('id_paciente')
         df = df.groupby(level=0).ffill()
         df = df.reset_index()
-        logs.append(f"  → {len(df)} registros limpios listos para cargar.")
 
-        # LOAD
-        logs.append("LOAD: Insertando en base de datos...")
+        print(f"3. Procesando {len(df)} registros...")
+
         pacientes_db = {p.identificacion: p for p in Paciente.objects.all()}
-        registros_a_crear = []
-
-        for _, row in df.iterrows():
-            try:
-                p_id = str(row.get('id_paciente', '')).strip()
-                if not p_id:
-                    registros_fallidos += 1
-                    continue
-
-                if p_id not in pacientes_db:
-                    paciente = Paciente.objects.create(
-                        identificacion=p_id,
-                        nombres=str(row.get('nombres', 'N/A')),
-                        apellidos=str(row.get('apellidos', 'N/A')),
-                        edad=int(limpiar_numerico(row.get('edad'), 30)),
-                        sexo=normalizar_sexo(row.get('sexo'))
-                    )
-                    pacientes_db[p_id] = paciente
-
-                registros_a_crear.append(RegistroClinico(
-                    paciente=pacientes_db[p_id],
-                    peso=limpiar_numerico(row.get('peso'), 70.0),
-                    altura=limpiar_numerico(row.get('altura'), 1.70),
-                    imc=limpiar_numerico(row.get('imc'), 0.0),
-                    presion_sistolica=int(limpiar_numerico(row.get('presion_sistolica'), 120)),
-                    presion_diastolica=int(limpiar_numerico(row.get('presion_diastolica'), 80)),
-                    frecuencia_cardiaca=int(limpiar_numerico(row.get('frecuencia_cardiaca'), 70)),
-                    glucosa=limpiar_numerico(row.get('glucosa'), 90.0),
-                    colesterol=int(limpiar_numerico(row.get('colesterol'), 150)),
-                    saturacion_oxigeno=limpiar_numerico(row.get('saturacion_oxigeno'), 98.0),
-                    temperatura=limpiar_numerico(row.get('temperatura'), 36.5),
-                    antecedentes_familiares=str(row.get('antecedentes_familiares', 'Ninguno')),
-                    fumador=str(row.get('fumador', '')).lower() in ['true', '1', 'si', 't', 1],
-                    consumo_alcohol=str(row.get('consumo_alcohol', '')).lower() in ['true', '1', 'si', 't', 1],
-                    actividad_fisica=str(row.get('actividad_fisica', 'N/A')),
-                    diagnostico_preliminar=str(row.get('diagnostico_preliminar', 'N/A')),
-                    riesgo_enfermedad=normalizar_riesgo(row.get('riesgo_enfermedad')),
-                    fecha_consulta=pd.to_datetime(row['fecha_consulta']).date()
-                ))
-            except Exception as e:
-                registros_fallidos += 1
-                logs.append(f"  ⚠ Fila omitida: {e}")
+        procesados = 0
+        actualizados = 0
+        creados = 0
+        errores = 0
 
         with transaction.atomic():
-            RegistroClinico.objects.bulk_create(registros_a_crear)
+            for _, row in df.iterrows():
+                try:
+                    p_id = str(row.get('id_paciente', '')).strip()
+                    if not p_id:
+                        continue
+
+                    # Crear o actualizar paciente
+                    if p_id not in pacientes_db:
+                        paciente = Paciente.objects.create(
+                            identificacion=p_id,
+                            nombres=str(row.get('nombres', 'N/A')),
+                            apellidos=str(row.get('apellidos', 'N/A')),
+                            edad=int(limpiar_numerico(row.get('edad'), 30)),
+                            sexo=normalizar_sexo(row.get('sexo'))
+                        )
+                        pacientes_db[p_id] = paciente
+                    else:
+                        # Actualizar datos del paciente si cambiaron
+                        paciente = pacientes_db[p_id]
+                        paciente.nombres = str(row.get('nombres', paciente.nombres))
+                        paciente.apellidos = str(row.get('apellidos', paciente.apellidos))
+                        paciente.edad = int(limpiar_numerico(row.get('edad'), paciente.edad))
+                        paciente.sexo = normalizar_sexo(row.get('sexo')) or paciente.sexo
+                        paciente.save(update_fields=['nombres', 'apellidos', 'edad', 'sexo'])
+
+                    fecha = pd.to_datetime(row['fecha_consulta']).date()
+
+                    campos = dict(
+                        peso=limpiar_numerico(row.get('peso'), 70.0),
+                        altura=limpiar_numerico(row.get('altura'), 1.70),
+                        imc=limpiar_numerico(row.get('imc'), 0.0),
+                        presion_sistolica=int(limpiar_numerico(row.get('presion_sistolica'), 120)),
+                        presion_diastolica=int(limpiar_numerico(row.get('presion_diastolica'), 80)),
+                        frecuencia_cardiaca=int(limpiar_numerico(row.get('frecuencia_cardiaca'), 70)),
+                        glucosa=limpiar_numerico(row.get('glucosa'), 90.0),
+                        colesterol=int(limpiar_numerico(row.get('colesterol'), 150)),
+                        saturacion_oxigeno=limpiar_numerico(row.get('saturacion_oxigeno'), 98.0),
+                        temperatura=limpiar_numerico(row.get('temperatura'), 36.5),
+                        antecedentes_familiares=str(row.get('antecedentes_familiares', 'Ninguno')),
+                        fumador=str(row.get('fumador', '')).lower() in ['true', '1', 'si', 't', 1],
+                        consumo_alcohol=str(row.get('consumo_alcohol', '')).lower() in ['true', '1', 'si', 't', 1],
+                        actividad_fisica=str(row.get('actividad_fisica', 'N/A')),
+                        diagnostico_preliminar=str(row.get('diagnostico_preliminar', 'N/A')),
+                        riesgo_enfermedad=normalizar_riesgo(row.get('riesgo_enfermedad')),
+                    )
+
+                    # get_or_create evita duplicados contra la BD
+                    registro, fue_creado = RegistroClinico.objects.get_or_create(
+                        paciente=pacientes_db[p_id],
+                        fecha_consulta=fecha,
+                        defaults=campos
+                    )
+
+                    if fue_creado:
+                        creados += 1
+                    else:
+                        # Si ya existe, actualiza los campos
+                        for campo, valor in campos.items():
+                            setattr(registro, campo, valor)
+                        registro.save()
+                        actualizados += 1
+
+                    procesados += 1
+
+                except Exception as e:
+                    errores += 1
+                    print(f"Error en fila: {e}")
 
         tiempo = round(time.time() - inicio, 2)
-        logs.append(f"ÉXITO: {len(registros_a_crear)} registros cargados en {tiempo}s.")
 
-        return {
-            'exito': True,
-            'registros_procesados': len(registros_a_crear),
-            'registros_fallidos': registros_fallidos,
-            'tiempo_ejecucion': tiempo,
-            'log_detalle': '\n'.join(logs),
-            'mensaje_error': '',
-        }
+        log.registros_procesados = procesados
+        log.registros_fallidos = errores
+        log.tiempo_ejecucion = tiempo
+        log.estado = 'exitoso'
+        log.log_detalle = f"Creados: {creados} | Actualizados: {actualizados} | Duplicados en archivo: {duplicados}"
+        log.mensaje_error = ''
+        log.save()
+
+        print(f"¡ÉXITO! Creados: {creados} | Actualizados: {actualizados} | Errores: {errores} | Tiempo: {tiempo}s")
+        return True
 
     except Exception as e:
         import traceback
         tiempo = round(time.time() - inicio, 2)
-        logs.append(f"ERROR CRÍTICO: {e}")
-        return {
-            'exito': False,
-            'registros_procesados': 0,
-            'registros_fallidos': registros_fallidos,
-            'tiempo_ejecucion': tiempo,
-            'log_detalle': '\n'.join(logs),
-            'mensaje_error': traceback.format_exc(),
-        }
+        log.tiempo_ejecucion = tiempo
+        log.estado = 'fallido'
+        log.mensaje_error = str(e)
+        log.save()
+        print(f"ERROR en ETL: {e}")
+        traceback.print_exc()
+        return False

@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block page_title %}Subir Dataset{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card p-4">
+            <h5 class="fw-semibold mb-1"><i class="bi bi-cloud-upload me-2 text-primary"></i>Subir Dataset Clínico</h5>
+            <p class="text-muted small mb-4">Sube un archivo CSV o Excel para ejecutar el proceso ETL automáticamente.</p>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Archivo CSV o Excel</label>
+                    <div class="border-2 border-dashed rounded p-5 text-center" id="dropZone"
+                         style="border: 2px dashed #0d6efd; cursor: pointer;">
+                        <i class="bi bi-file-earmark-arrow-up fs-1 text-primary mb-2 d-block"></i>
+                        <p class="mb-1 fw-semibold">Arrastra tu archivo aquí</p>
+                        <p class="text-muted small mb-3">o haz clic para seleccionar</p>
+                        <input type="file" name="archivo" id="archivoInput"
+                               accept=".csv,.xlsx" class="d-none">
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                onclick="document.getElementById('archivoInput').click()">
+                            Seleccionar archivo
+                        </button>
+                        <div id="nombreArchivo" class="mt-3 text-success fw-semibold d-none"></div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Formatos aceptados: <strong>.csv</strong> y <strong>.xlsx</strong> —
+                        El sistema ejecutará el ETL automáticamente al subir.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-play-fill me-1"></i> Procesar archivo
+                    </button>
+                    <a href="{% url 'historial_etl' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-clock-history me-1"></i> Ver historial
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="card p-4 mt-3">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2 text-info"></i>Formato esperado del archivo</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Campo</th><th>Tipo</th><th>Ejemplo</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <tr><td>id_paciente</td><td>Integer</td><td>1001</td></tr>
+                        <tr><td>nombres</td><td>String</td><td>Juan</td></tr>
+                        <tr><td>apellidos</td><td>String</td><td>Pérez</td></tr>
+                        <tr><td>edad</td><td>Integer</td><td>45</td></tr>
+                        <tr><td>sexo</td><td>String</td><td>Masculino / M</td></tr>
+                        <tr><td>glucosa</td><td>Float</td><td>95.5</td></tr>
+                        <tr><td>presión_sistólica</td><td>Integer</td><td>120</td></tr>
+                        <tr><td>riesgo_enfermedad</td><td>String</td><td>Bajo/Medio/Alto/Crítico</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('archivoInput');
+    const dropZone = document.getElementById('dropZone');
+    const nombreDiv = document.getElementById('nombreArchivo');
+
+    input.addEventListener('change', function () {
+        if (this.files[0]) {
+            nombreDiv.textContent = '✓ ' + this.files[0].name;
+            nombreDiv.classList.remove('d-none');
+            dropZone.style.borderColor = '#198754';
+        }
+    });
+
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.style.background = '#f0f4ff';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.style.background = '';
+    });
+
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.style.background = '';
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            nombreDiv.textContent = '✓ ' + file.name;
+            nombreDiv.classList.remove('d-none');
+            dropZone.style.borderColor = '#198754';
+        }
+    });
+});
+</script>
+{% endblock %}

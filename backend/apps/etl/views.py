@@ -1,11 +1,13 @@
 import os
 import csv
 import tempfile
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -124,11 +126,60 @@ def historial_web(request):
 
 
 @login_required
+@role_required(allowed_roles=['Analista', 'Admin'])
+def subir_csv(request):
+    if request.method == 'POST':
+        archivo = request.FILES.get('archivo')
+
+        if not archivo:
+            messages.error(request, 'No se seleccionó ningún archivo.')
+            return redirect('subir_csv')
+
+        if not archivo.name.endswith(('.csv', '.xlsx')):
+            messages.error(request, 'Solo se permiten archivos CSV o Excel (.xlsx).')
+            return redirect('subir_csv')
+
+        sufijo = '.xlsx' if archivo.name.endswith('.xlsx') else '.csv'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=sufijo) as tmp:
+            for chunk in archivo.chunks():
+                tmp.write(chunk)
+            ruta = tmp.name
+
+        log = ETLLog.objects.create(
+            usuario=request.user,
+            estado='en_proceso',
+            archivo_fuente=archivo.name,
+        )
+
+        exito = run_etl(ruta)
+
+        if exito:
+            log.estado = 'exitoso'
+            log.save()
+            messages.success(request, f'Archivo "{archivo.name}" procesado exitosamente.')
+        else:
+            log.estado = 'fallido'
+            log.save()
+            messages.error(request, f'Error al procesar "{archivo.name}".')
+
+        try:
+            os.remove(ruta)
+        except Exception:
+            pass
+
+        return redirect('historial_etl')
+
+    return render(request, 'etl/subir_csv.html')
+
+
+# ── Exportación ──────────────────────────────────────────────────────
+
+@login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
 def exportar_csv(request):
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="pacientes_clinicos.csv"'
-    response.write('\ufeff')  # BOM para Excel
+    response.write('\ufeff')
 
     writer = csv.writer(response)
     writer.writerow([
@@ -142,21 +193,16 @@ def exportar_csv(request):
     registros = RegistroClinico.objects.select_related('paciente').all()
     for r in registros:
         writer.writerow([
-            r.paciente.identificacion,
-            r.paciente.nombres,
-            r.paciente.apellidos,
-            r.paciente.edad,
-            r.paciente.sexo,
+            r.paciente.identificacion, r.paciente.nombres, r.paciente.apellidos,
+            r.paciente.edad, r.paciente.sexo,
             r.peso, r.altura, r.imc,
             r.presion_sistolica, r.presion_diastolica,
             r.frecuencia_cardiaca, r.glucosa, r.colesterol,
             r.saturacion_oxigeno, r.temperatura,
             'Sí' if r.fumador else 'No',
             'Sí' if r.consumo_alcohol else 'No',
-            r.actividad_fisica,
-            r.diagnostico_preliminar,
-            r.riesgo_enfermedad,
-            r.fecha_consulta,
+            r.actividad_fisica, r.diagnostico_preliminar,
+            r.riesgo_enfermedad, r.fecha_consulta,
         ])
 
     return response
@@ -165,11 +211,8 @@ def exportar_csv(request):
 @login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
 def exportar_excel(request):
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
-    except ImportError:
-        return HttpResponse("openpyxl no instalado. Corre: pip install openpyxl", status=500)
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -183,7 +226,6 @@ def exportar_excel(request):
         'Diagnóstico', 'Riesgo', 'Fecha Consulta'
     ]
 
-    # Estilo encabezado
     header_fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
 
@@ -193,7 +235,6 @@ def exportar_excel(request):
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
 
-    # Colores por riesgo
     colores = {
         'Crítico': 'FFCCCC',
         'Alto': 'FFE5CC',
@@ -222,7 +263,6 @@ def exportar_excel(request):
             cell = ws.cell(row=row_num, column=col, value=valor)
             cell.fill = fill
 
-    # Ajustar ancho columnas
     for col in ws.columns:
         max_length = max(len(str(cell.value or '')) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 30)
@@ -232,4 +272,106 @@ def exportar_excel(request):
     )
     response['Content-Disposition'] = 'attachment; filename="pacientes_clinicos.xlsx"'
     wb.save(response)
+    return response
+
+
+@login_required
+@role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
+def exportar_pdf(request):
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    import io
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=1*cm, leftMargin=1*cm,
+        topMargin=1.5*cm, bottomMargin=1*cm
+    )
+
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    # Título
+    titulo_style = ParagraphStyle(
+        'titulo', parent=styles['Title'],
+        fontSize=16, textColor=colors.HexColor('#0d6efd'),
+        spaceAfter=6
+    )
+    subtitulo_style = ParagraphStyle(
+        'subtitulo', parent=styles['Normal'],
+        fontSize=9, textColor=colors.grey,
+        spaceAfter=12
+    )
+
+    elementos.append(Paragraph("HealthAnalytics IPS — Reporte Clínico", titulo_style))
+    elementos.append(Paragraph(
+        f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} por {request.user.username}",
+        subtitulo_style
+    ))
+    elementos.append(Spacer(1, 0.3*cm))
+
+    # Tabla
+    headers = [
+        'Paciente', 'Edad', 'Sexo', 'Glucosa',
+        'Presión', 'Sat. O₂', 'IMC', 'Diagnóstico', 'Riesgo', 'Fecha'
+    ]
+
+    data = [headers]
+    registros = RegistroClinico.objects.select_related('paciente').all()[:500]
+
+    colores_riesgo = {
+        'Crítico': colors.HexColor('#FFCCCC'),
+        'Alto': colors.HexColor('#FFE5CC'),
+        'Medio': colors.HexColor('#FFFACC'),
+        'Bajo': colors.HexColor('#CCFFCC'),
+    }
+
+    estilos_filas = []
+    for i, r in enumerate(registros, 1):
+        fila = [
+            f"{r.paciente.nombres} {r.paciente.apellidos}",
+            str(r.paciente.edad),
+            r.paciente.sexo,
+            str(r.glucosa),
+            f"{r.presion_sistolica}/{r.presion_diastolica}",
+            f"{r.saturacion_oxigeno}%",
+            str(round(r.imc, 1)),
+            r.diagnostico_preliminar[:25] if r.diagnostico_preliminar else 'N/A',
+            r.riesgo_enfermedad,
+            str(r.fecha_consulta),
+        ]
+        data.append(fila)
+
+        color = colores_riesgo.get(r.riesgo_enfermedad)
+        if color:
+            estilos_filas.append(('BACKGROUND', (0, i), (-1, i), color))
+
+    tabla = Table(data, repeatRows=1)
+    estilo_base = [
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0d6efd')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]
+
+    tabla.setStyle(TableStyle(estilo_base + estilos_filas))
+    elementos.append(tabla)
+
+    doc.build(elementos)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_clinico.pdf"'
     return response
