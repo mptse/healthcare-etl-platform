@@ -106,6 +106,7 @@ def run_etl(file_path, usuario=None):
                         pacientes_db[p_id] = paciente
                     else:
                         # Actualizar datos del paciente si cambiaron
+                        
                         paciente = pacientes_db[p_id]
                         paciente.nombres = str(row.get('nombres', paciente.nombres))
                         paciente.apellidos = str(row.get('apellidos', paciente.apellidos))
