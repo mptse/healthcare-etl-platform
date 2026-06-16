@@ -9,7 +9,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host}" for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -18,13 +24,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Terceros
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # ← logout JWT
-
-    # Apps del proyecto
+    'rest_framework_simplejwt.token_blacklist',
     'apps.authentication',
     'apps.etl',
     'apps.analytics',
@@ -33,6 +35,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,25 +79,24 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'backend', 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 AUTH_USER_MODEL = 'authentication.UsuarioPersonalizado'
-
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard_principal'
 
-# ── Django REST Framework ────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',  # mantiene el admin web
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
 
-# ── JWT ──────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
