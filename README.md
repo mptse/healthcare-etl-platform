@@ -21,8 +21,9 @@ venv\\Scripts\activate
 ### 3. Instalar dependencias
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements_dev.txt  (si se va a usar en locar)
 ```
+pip install -r requirements.txt (para despliegue en render)
 
 ### 4. Configurar variables de entorno
 
