@@ -1,8 +1,8 @@
----
+********
 
 ## Instalación y Configuración
 
-### 1. Clonar el repositorio
+** 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/mptse/healthcare-etl-platform.git
