@@ -5,7 +5,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from rest_framework.views import APIView
@@ -151,16 +151,32 @@ def subir_csv(request):
             archivo_fuente=archivo.name,
         )
 
-        exito = run_etl(ruta)
+        resultado = run_etl(ruta)  # ← retorna dict
 
-        if exito:
-            log.estado = 'exitoso'
-            log.save()
-            messages.success(request, f'Archivo "{archivo.name}" procesado exitosamente.')
+        log.registros_procesados = resultado.get('registros_procesados', 0)
+        log.registros_fallidos   = resultado.get('registros_fallidos', 0)
+        log.tiempo_ejecucion     = resultado.get('tiempo_ejecucion', 0.0)
+        log.log_detalle          = resultado.get('log_detalle', '')
+        log.mensaje_error        = resultado.get('mensaje_error', '')
+        log.estado               = 'exitoso' if resultado.get('exito') else 'fallido'
+        log.save()
+
+        if resultado.get('exito'):
+            try:
+                from apps.ml.trainer import entrenar_modelo
+                entrenar_modelo()
+            except Exception:
+                pass
+            messages.success(
+                request,
+                f'✓ "{archivo.name}" procesado: '
+                f'{log.registros_procesados} registros en {log.tiempo_ejecucion}s.'
+            )
         else:
-            log.estado = 'fallido'
-            log.save()
-            messages.error(request, f'Error al procesar "{archivo.name}".')
+            messages.error(
+                request,
+                f'Error al procesar "{archivo.name}". Revisa el historial.'
+            )
 
         try:
             os.remove(ruta)
@@ -172,41 +188,70 @@ def subir_csv(request):
     return render(request, 'etl/subir_csv.html')
 
 
+@login_required
+@role_required(allowed_roles=['Analista', 'Admin'])
+def eliminar_log(request, pk):
+    from django.shortcuts import get_object_or_404
+    log = get_object_or_404(ETLLog, pk=pk)
+    if request.method == 'POST':
+        log.delete()
+        messages.success(request, f'Ejecución #{pk} eliminada.')
+    return redirect('historial_etl')
+
+
+@login_required
+@role_required(allowed_roles=['Analista', 'Admin'])
+def eliminar_todos_logs(request):
+    if request.method == 'POST':
+        total = ETLLog.objects.count()
+        ETLLog.objects.all().delete()
+        messages.success(request, f'{total} registros eliminados del historial.')
+    return redirect('historial_etl')
+
 # ── Exportación ──────────────────────────────────────────────────────
 
 @login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
 def exportar_csv(request):
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = 'attachment; filename="pacientes_clinicos.csv"'
-    response.write('\ufeff')
+    # Creamos un generador para enviar los datos por partes (streaming)
+    def generar_csv():
 
-    writer = csv.writer(response)
-    writer.writerow([
-        'ID', 'Nombres', 'Apellidos', 'Edad', 'Sexo',
-        'Peso', 'Altura', 'IMC', 'Presión Sistólica', 'Presión Diastólica',
-        'Frecuencia Cardíaca', 'Glucosa', 'Colesterol', 'Saturación O2',
-        'Temperatura', 'Fumador', 'Consumo Alcohol', 'Actividad Física',
-        'Diagnóstico', 'Riesgo', 'Fecha Consulta'
-    ])
+        yield '\ufeff'
+        # Usamos un objeto que Django pueda escribir
+        class Echo:
+            def write(self, value): return value
 
-    registros = RegistroClinico.objects.select_related('paciente').all()
-    for r in registros:
-        writer.writerow([
-            r.paciente.identificacion, r.paciente.nombres, r.paciente.apellidos,
-            r.paciente.edad, r.paciente.sexo,
-            r.peso, r.altura, r.imc,
-            r.presion_sistolica, r.presion_diastolica,
-            r.frecuencia_cardiaca, r.glucosa, r.colesterol,
-            r.saturacion_oxigeno, r.temperatura,
-            'Sí' if r.fumador else 'No',
-            'Sí' if r.consumo_alcohol else 'No',
-            r.actividad_fisica, r.diagnostico_preliminar,
-            r.riesgo_enfermedad, r.fecha_consulta,
+        writer = csv.writer(Echo())
+        
+        # Escribir cabecera
+        yield writer.writerow([
+            'ID', 'Nombres', 'Apellidos', 'Edad', 'Sexo',
+            'Peso', 'Altura', 'IMC', 'Presión Sistólica', 'Presión Diastólica',
+            'Frecuencia Cardíaca', 'Glucosa', 'Colesterol', 'Saturación O2',
+            'Temperatura', 'Fumador', 'Consumo Alcohol', 'Actividad Física',
+            'Diagnóstico', 'Riesgo', 'Fecha Consulta'
         ])
 
-    return response
+        # Usamos .iterator() para no cargar todo en RAM
+        registros = RegistroClinico.objects.select_related('paciente').iterator()
+        
+        for r in registros:
+            yield writer.writerow([
+                r.paciente.identificacion, r.paciente.nombres, r.paciente.apellidos,
+                r.paciente.edad, r.paciente.sexo,
+                r.peso, r.altura, r.imc,
+                r.presion_sistolica, r.presion_diastolica,
+                r.frecuencia_cardiaca, r.glucosa, r.colesterol,
+                r.saturacion_oxigeno, r.temperatura,
+                'Sí' if r.fumador else 'No',
+                'Sí' if r.consumo_alcohol else 'No',
+                r.actividad_fisica, r.diagnostico_preliminar,
+                r.riesgo_enfermedad, r.fecha_consulta,
+            ])
 
+    response = StreamingHttpResponse(generar_csv(), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="pacientes_clinicos.csv"'
+    return response
 
 @login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])

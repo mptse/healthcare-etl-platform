@@ -1,113 +1,196 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
 
-body, html {
-    height: 100%;
+*, *::before, *::after {
+    box-sizing: border-box;
     margin: 0;
-    font-family: 'Montserrat', sans-serif;
-    overflow: hidden; 
-    width: 100%;
+    padding: 0;
 }
 
-/* La imagen de fondo cubre toda la pantalla */
+html, body {
+    height: 100%;
+    width: 100%;
+    font-family: 'Montserrat', sans-serif;
+}
+
 body {
     background: url('/static/authentication/img/cerca-equipo-trabajadores-salud_23-2149112523.avif') no-repeat center center fixed;
     background-size: cover;
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 100vh;
+    padding: 16px;          /* ← evita que la card toque los bordes en móvil */
 }
 
-/* Capa oscura para que el formulario resalte */
+/* Overlay oscuro */
 .background-overlay {
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.4); /* Oscurece la imagen un 40% */
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 0;
 }
 
-/* La caja flotante centrada */
-.login-card {
+/* Wrapper que centra la card y el footer */
+.login-wrapper {
     position: relative;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 40px;
-    border-radius: 20px;
-    width: 300px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    animation: fadeInDown 1s ease-out;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;       /* ← máximo en desktop */
 }
 
+/* Card */
+.login-card {
+    background: rgba(255, 255, 255, 0.97);
+    padding: 40px 36px;
+    border-radius: 20px;
+    width: 100%;            /* ← ocupa todo el wrapper */
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    animation: fadeInDown 0.6s ease-out;
+}
 
 @keyframes fadeInDown {
-    0% {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Ícono de marca */
+.brand-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #2d4f7c, #4a6fa5);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+    box-shadow: 0 4px 14px rgba(45, 79, 124, 0.35);
 }
 
 .login-card h2 {
-    color: #333;
-    font-weight: 600;
-    margin-bottom: 10px;
+    color: #1a2f4a;
+    font-weight: 700;
+    font-size: 1.4rem;
+    margin-bottom: 6px;
 }
 
 .login-card p {
-    color: #666;
+    color: #7a8fa6;
     font-size: 0.85rem;
-    margin-bottom: 30px;
+    margin-bottom: 28px;
+}
+
+/* Error */
+.error-msg {
+    background: #fdecea;
+    border: 1px solid #f5c6cb;
+    color: #842029;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+/* Inputs */
+.input-group {
+    position: relative;
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #7a8fa6;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
 }
 
 .input-group input {
     width: 100%;
-    padding: 14px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
+    padding: 13px 14px 13px 40px;   /* espacio para el ícono */
+    border: 1.5px solid #dde3ec;
     border-radius: 10px;
-    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    background: #f8fafd;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
 }
 
+.input-group input:focus {
+    border-color: #4a6fa5;
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.15);
+    background: #fff;
+}
 
+.input-group input::placeholder {
+    color: #b0bec5;
+}
 
-button {
+/* Botón */
+button[type="submit"] {
     width: 100%;
-    padding: 14px;
-    background-color: #445e79;
+    padding: 13px;
+    background: linear-gradient(135deg, #2d4f7c, #4a6fa5);
     color: white;
-     border-color: #445e79;
+    border: none;
     border-radius: 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: 0.3s;
+    margin-top: 6px;
+    transition: opacity 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
 }
+
+button[type="submit"]:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+button[type="submit"]:active {
+    transform: translateY(0);
+}
+
+/* Footer */
 .footer {
-    position: absolute;
-    bottom: 20px;
-    width: 100%;
-    text-align: center;
-    color: rgba(255, 255, 255, 0.7); /* Color suave para que no distraiga */
-    font-size: 0.8rem;
+    margin-top: 20px;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.78rem;
     font-weight: 300;
+    text-align: center;
 }
 
-button:hover {
-    background: #34495e;
-}
-/* Ajuste para dispositivos móviles */
+/* ── Responsive ── */
 @media (max-width: 480px) {
-    .login-card {
-        width: 85%;       /* Un poco más ancho en móviles para aprovechar el espacio */
-        padding: 25px;    /* Menos padding para que quepan más elementos */
-    }
-    
-    .login-card h2 {
-        font-size: 20px;  /* Título un poco más pequeño en celular */
+    body {
+        padding: 12px;
+        align-items: flex-start;    /* en móvil la card va arriba */
+        padding-top: 40px;
     }
 
-    button {
-        padding: 12px;    /* Botón un poquito más compacto */
+    .login-card {
+        padding: 30px 22px;
+        border-radius: 16px;
+    }
+
+    .login-card h2 {
+        font-size: 1.2rem;
+    }
+
+    .brand-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
     }
 }

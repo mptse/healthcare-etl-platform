@@ -3,28 +3,28 @@
 
 {% block content %}
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card danger p-3 position-relative overflow-hidden">
             <div class="text-muted small">Total Pacientes</div>
             <div class="fs-2 fw-bold text-danger">{{ stats.total }}</div>
             <i class="bi bi-heart-pulse-fill position-absolute text-danger opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card warning p-3 position-relative overflow-hidden">
             <div class="text-muted small">Hipertensos</div>
             <div class="fs-2 fw-bold text-warning">{{ stats.hipertensos }}</div>
             <i class="bi bi-droplet-fill position-absolute text-warning opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card info p-3 position-relative overflow-hidden">
             <div class="text-muted small">Glucosa Alta</div>
             <div class="fs-2 fw-bold text-info">{{ stats.glucosa_alta }}</div>
             <i class="bi bi-capsule-pill position-absolute text-info opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card p-3 position-relative overflow-hidden">
             <div class="text-muted small">Sat. O₂ Baja</div>
             <div class="fs-2 fw-bold text-primary">{{ stats.saturacion_baja }}</div>
@@ -33,16 +33,15 @@
     </div>
 </div>
 
-<!-- Filtros en tiempo real -->
+<!-- Filtros -->
 <div class="card p-4 mb-4">
     <h6 class="fw-semibold mb-3"><i class="bi bi-funnel me-2"></i>Buscar Pacientes</h6>
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
             <label class="form-label small fw-semibold">Nombre o Apellido</label>
-            <input type="text" id="buscarNombre" class="form-control"
-                   placeholder="Escriba para buscar...">
+            <input type="text" id="buscarNombre" class="form-control" placeholder="Escriba para buscar...">
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label small fw-semibold">Nivel de Riesgo</label>
             <select id="filtroRiesgo" class="form-select">
                 <option value="">Todos</option>
@@ -52,7 +51,7 @@
                 <option value="Bajo">Bajo</option>
             </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end gap-2">
+        <div class="col-6 col-md-3 d-flex align-items-end gap-2">
             <a href="{% url 'exportar_csv' %}" class="btn btn-outline-success w-100">
                 <i class="bi bi-filetype-csv me-1"></i> CSV
             </a>
@@ -64,18 +63,18 @@
 </div>
 
 <!-- Tabla -->
-<div class="card p-4">
+<div class="card p-3 p-md-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h6 class="fw-semibold mb-0"><i class="bi bi-people me-2"></i>Lista de Pacientes</h6>
         <span class="badge bg-primary rounded-pill" id="contadorResultados">{{ pacientes_alerta|length }} pacientes</span>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle" id="tablaPacientes">
+        <table class="table table-hover align-middle" id="tablaPacientes" style="min-width:700px">
             <thead class="table-light">
                 <tr>
                     <th>Paciente</th><th>Edad</th><th>Sexo</th>
                     <th>Diagnóstico</th><th>Glucosa</th><th>Presión</th>
-                    <th>Sat. O₂</th><th>IMC</th><th>Riesgo</th><th>Fecha</th>
+                    <th>Sat. O₂</th><th>Riesgo</th><th>Fecha</th>
                 </tr>
             </thead>
             <tbody id="cuerpoTabla">
@@ -93,44 +92,30 @@
                     <td>
                         {% if r.glucosa > 300 %}
                             <span class="text-danger fw-bold">{{ r.glucosa }}</span>
-                        {% else %}
-                            {{ r.glucosa }}
-                        {% endif %}
+                        {% else %}{{ r.glucosa }}{% endif %}
                     </td>
                     <td>
                         {% if r.presion_sistolica > 180 %}
                             <span class="text-danger fw-bold">{{ r.presion_sistolica }}/{{ r.presion_diastolica }}</span>
-                        {% else %}
-                            {{ r.presion_sistolica }}/{{ r.presion_diastolica }}
-                        {% endif %}
+                        {% else %}{{ r.presion_sistolica }}/{{ r.presion_diastolica }}{% endif %}
                     </td>
                     <td>
                         {% if r.saturacion_oxigeno < 85 %}
                             <span class="text-danger fw-bold">{{ r.saturacion_oxigeno }}%</span>
                         {% elif r.saturacion_oxigeno < 90 %}
                             <span class="text-warning fw-bold">{{ r.saturacion_oxigeno }}%</span>
-                        {% else %}
-                            {{ r.saturacion_oxigeno }}%
-                        {% endif %}
+                        {% else %}{{ r.saturacion_oxigeno }}%{% endif %}
                     </td>
-                    <td>{{ r.imc|floatformat:1 }}</td>
                     <td>
-                        {% if r.riesgo_enfermedad == 'Crítico' %}
-                            <span class="badge bg-danger">Crítico</span>
-                        {% elif r.riesgo_enfermedad == 'Alto' %}
-                            <span class="badge bg-warning text-dark">Alto</span>
-                        {% elif r.riesgo_enfermedad == 'Medio' %}
-                            <span class="badge bg-info text-dark">Medio</span>
-                        {% else %}
-                            <span class="badge bg-success">Bajo</span>
-                        {% endif %}
+                        {% if r.riesgo_enfermedad == 'Crítico' %}<span class="badge bg-danger">Crítico</span>
+                        {% elif r.riesgo_enfermedad == 'Alto' %}<span class="badge bg-warning text-dark">Alto</span>
+                        {% elif r.riesgo_enfermedad == 'Medio' %}<span class="badge bg-info text-dark">Medio</span>
+                        {% else %}<span class="badge bg-success">Bajo</span>{% endif %}
                     </td>
                     <td><small>{{ r.fecha_consulta }}</small></td>
                 </tr>
                 {% empty %}
-                <tr id="sinResultados">
-                    <td colspan="10" class="text-center text-muted py-4">No hay pacientes registrados.</td>
-                </tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">No hay pacientes registrados.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -144,10 +129,10 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const inputNombre = document.getElementById('buscarNombre');
+    const inputNombre  = document.getElementById('buscarNombre');
     const selectRiesgo = document.getElementById('filtroRiesgo');
-    const filas = document.querySelectorAll('.fila-paciente');
-    const contador = document.getElementById('contadorResultados');
+    const filas        = document.querySelectorAll('.fila-paciente');
+    const contador     = document.getElementById('contadorResultados');
     const mensajeVacio = document.getElementById('mensajeVacio');
 
     function filtrar() {
@@ -156,27 +141,14 @@ document.addEventListener('DOMContentLoaded', function () {
         let visibles = 0;
 
         filas.forEach(fila => {
-            const nombreFila = fila.dataset.nombre;
-            const riesgoFila = fila.dataset.riesgo;
-
-            const coincideNombre = nombre === '' || nombreFila.includes(nombre);
-            const coincideRiesgo = riesgo === '' || riesgoFila === riesgo;
-
-            if (coincideNombre && coincideRiesgo) {
-                fila.style.display = '';
-                visibles++;
-            } else {
-                fila.style.display = 'none';
-            }
+            const ok = (nombre === '' || fila.dataset.nombre.includes(nombre))
+                    && (riesgo === '' || fila.dataset.riesgo === riesgo);
+            fila.style.display = ok ? '' : 'none';
+            if (ok) visibles++;
         });
 
         contador.textContent = visibles + ' pacientes';
-
-        if (visibles === 0) {
-            mensajeVacio.classList.remove('d-none');
-        } else {
-            mensajeVacio.classList.add('d-none');
-        }
+        mensajeVacio.classList.toggle('d-none', visibles > 0);
     }
 
     inputNombre.addEventListener('input', filtrar);

@@ -9,14 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary:     #4a6fa5;
-            --primary-dark:#2d4f7c;
+            --primary:      #4a6fa5;
+            --primary-dark: #2d4f7c;
             --primary-light:#6b8cba;
-            --bg:          #f4f6f9;
-            --sidebar-bg:  linear-gradient(180deg, #2d4f7c 0%, #1a2f4a 100%);
-            --card-shadow: 0 2px 12px rgba(45,79,124,0.10);
-            --text-muted:  #7a8fa6;
-            --border:      #dde3ec;
+            --bg:           #f4f6f9;
+            --sidebar-w:    250px;
+            --card-shadow:  0 2px 12px rgba(45,79,124,0.10);
+            --text-muted:   #7a8fa6;
+            --border:       #dde3ec;
         }
 
         * { box-sizing: border-box; }
@@ -28,17 +28,38 @@
             color: #2c3e50;
         }
 
+        /* ── Overlay (móvil) ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 99;
+        }
+        .sidebar-overlay.active { display: block; }
+
         /* ── Sidebar ── */
         .sidebar {
             min-height: 100vh;
-            background: var(--sidebar-bg);
-            width: 250px;
+            background: linear-gradient(180deg, #2d4f7c 0%, #1a2f4a 100%);
+            width: var(--sidebar-w);
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
             display: flex;
             flex-direction: column;
             box-shadow: 3px 0 15px rgba(0,0,0,0.15);
+            transition: transform 0.28s ease;
+        }
+
+        /* En móvil el sidebar se oculta fuera de pantalla */
+        @media (max-width: 991px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
         }
 
         .sidebar-brand {
@@ -48,15 +69,13 @@
         }
 
         .sidebar-brand .brand-icon {
-            width: 56px;
-            height: 56px;
+            width: 56px; height: 56px;
             background: rgba(255,255,255,0.15);
             border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 10px;
-            backdrop-filter: blur(10px);
         }
 
         .sidebar-brand h6 {
@@ -64,12 +83,31 @@
             font-weight: 700;
             font-size: 0.95rem;
             margin: 0 0 2px;
-            letter-spacing: 0.3px;
         }
 
         .sidebar-brand small {
             color: rgba(255,255,255,0.5);
             font-size: 0.75rem;
+        }
+
+        /* Botón cerrar sidebar en móvil */
+        .sidebar-close {
+            display: none;
+            position: absolute;
+            top: 12px; right: 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            border-radius: 8px;
+            width: 32px; height: 32px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 991px) {
+            .sidebar-close { display: flex; }
         }
 
         .sidebar-nav {
@@ -116,7 +154,6 @@
             font-size: 1rem;
             width: 18px;
             text-align: center;
-            opacity: 0.85;
         }
 
         .sidebar-footer {
@@ -144,27 +181,52 @@
         .topbar {
             background: #fff;
             border-bottom: 1px solid var(--border);
-            padding: 12px 28px;
-            margin-left: 250px;
+            padding: 12px 20px;
             position: sticky;
             top: 0;
-            z-index: 99;
+            z-index: 98;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 1px 6px rgba(45,79,124,0.07);
+            margin-left: var(--sidebar-w);
+            transition: margin-left 0.28s ease;
+        }
+
+        @media (max-width: 991px) {
+            .topbar { margin-left: 0; }
+        }
+
+        /* Botón hamburguesa */
+        .btn-hamburger {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            color: var(--primary-dark);
+            padding: 0 10px 0 0;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        @media (max-width: 991px) {
+            .btn-hamburger { display: inline-flex; align-items: center; }
         }
 
         .topbar-title {
             font-weight: 600;
             color: #2c3e50;
             font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .topbar-right {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            flex-shrink: 0;
         }
 
         .topbar .badge {
@@ -183,11 +245,24 @@
             gap: 5px;
         }
 
-        /* ── Contenido ── */
+        /* Ocultar username en pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            .topbar .user-info span { display: none; }
+        }
+
+        /* ── Contenido principal ── */
         .main-content {
-            margin-left: 250px;
-            padding: 28px;
+            margin-left: var(--sidebar-w);
+            padding: 24px;
             min-height: calc(100vh - 56px);
+            transition: margin-left 0.28s ease;
+        }
+
+        @media (max-width: 991px) {
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+            }
         }
 
         /* ── Cards ── */
@@ -213,7 +288,9 @@
         .kpi-card.success { border-left-color: #2eac6b; }
         .kpi-card.info    { border-left-color: #3ab4c8; }
 
-        /* ── Tablas ── */
+        /* ── Tablas responsive ── */
+        .table-responsive { border-radius: 10px; }
+
         .table thead th {
             font-weight: 600;
             font-size: 0.8rem;
@@ -223,37 +300,46 @@
             border-bottom: 2px solid var(--border);
         }
 
-        .table tbody tr:hover {
-            background: #f8fafd;
+        .table tbody tr:hover { background: #f8fafd; }
+
+        /* ── Gráficas responsive ── */
+        .chart-container {
+            position: relative;
+            width: 100%;
         }
 
         /* ── Badges ── */
-        .badge {
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
+        .badge { font-weight: 500; letter-spacing: 0.3px; }
 
         /* ── Botones ── */
-        .btn-primary {
-            background: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            border-color: var(--primary-dark);
-        }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
+        .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
 
         /* ── Scrollbar sidebar ── */
         .sidebar-nav::-webkit-scrollbar { width: 4px; }
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
         .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        /* ── KPI grid responsive ── */
+        @media (max-width: 576px) {
+            .kpi-card .fs-2 { font-size: 1.5rem !important; }
+            .card-body { padding: 14px; }
+        }
     </style>
 </head>
 <body>
 
+<!-- Overlay móvil -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Sidebar -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
+
+    <!-- Botón cerrar (móvil) -->
+    <button class="sidebar-close" id="sidebarClose">
+        <i class="bi bi-x-lg"></i>
+    </button>
+
     <div class="sidebar-brand">
         <div class="brand-icon">
             <i class="bi bi-heart-pulse-fill text-white fs-4"></i>
@@ -396,12 +482,16 @@
 
 <!-- Topbar -->
 <div class="topbar">
+    <!-- Hamburguesa visible solo en móvil -->
+    <button class="btn-hamburger" id="sidebarToggle">
+        <i class="bi bi-list"></i>
+    </button>
     <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
     <div class="topbar-right">
         <span class="badge">{{ request.user.groups.all.0.name }}</span>
         <span class="user-info">
             <i class="bi bi-person-circle"></i>
-            {{ request.user.username }}
+            <span>{{ request.user.username }}</span>
         </span>
     </div>
 </div>
@@ -421,6 +511,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const sidebar      = document.getElementById('sidebar');
+    const overlay      = document.getElementById('sidebarOverlay');
+    const toggleBtn    = document.getElementById('sidebarToggle');
+    const closeBtn     = document.getElementById('sidebarClose');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    toggleBtn.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    // Cerrar sidebar al navegar (útil en móvil)
+    sidebar.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) closeSidebar();
+        });
+    });
+</script>
+
 {% block extra_js %}{% endblock %}
 </body>
 </html>

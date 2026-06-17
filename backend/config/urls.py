@@ -17,7 +17,7 @@ urlpatterns = [
 
     # API REST
     path('api/auth/',  include('apps.authentication.urls')),
-    path('api/etl/',   include('apps.etl.urls')),
+    path('api/etl/', include('apps.etl.urls')),
 
     # API Analytics
     path('api/dashboard/kpis/',         KPIsAPIView.as_view(),                name='api-kpis'),

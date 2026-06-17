@@ -3,35 +3,60 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acceso al Sistema</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Sistema — HealthAnalytics IPS</title>
     <link rel="stylesheet" href="{% static 'authentication/css/style.css' %}">
 </head>
 <body>
     <div class="background-overlay"></div>
-    
+
     <div class="login-wrapper">
         <div class="login-card">
+
+            <div class="brand-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="white" viewBox="0 0 16 16">
+                    <path d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                </svg>
+            </div>
+
             <h2>Iniciar Sesión</h2>
             <p>Bienvenido a HealthAnalytics IPS</p>
-            
+
+            {% if form.errors %}
+                <div class="error-msg">
+                    Usuario o contraseña incorrectos. Intenta de nuevo.
+                </div>
+            {% endif %}
+
             <form method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
                 <div class="input-group">
-                    <input type="text" name="username" placeholder="Usuario" required>
+                    <span class="input-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4z"/>
+                        </svg>
+                    </span>
+                    <input type="text" name="username" placeholder="Usuario" required autocomplete="username">
                 </div>
                 <div class="input-group">
-                    <input type="password" name="password" placeholder="Contraseña" required>
+                    <span class="input-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        </svg>
+                    </span>
+                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
                 </div>
                 <button type="submit">Iniciar Sesión</button>
             </form>
         </div>
+
         <footer class="footer">
-          &copy; <span id="year"></span> HealthAnalytics IPS. Todos los derechos reservados.
-      </footer>
+            &copy; <span id="year"></span> HealthAnalytics IPS. Todos los derechos reservados.
+        </footer>
     </div>
 
-      
-
-         
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>

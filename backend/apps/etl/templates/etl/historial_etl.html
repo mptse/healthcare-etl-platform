@@ -3,16 +3,25 @@
 
 {% block content %}
 <div class="card p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Ejecuciones ETL</h6>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-semibold mb-0">
+            <i class="bi bi-clock-history me-2 text-primary"></i>
+            Historial de Ejecuciones ETL
+            <span class="badge bg-secondary ms-2">{{ historial|length }} ejecuciones</span>
+        </h6>
         <div class="d-flex gap-2">
-            <span class="badge bg-primary rounded-pill">{{ historial|length }} ejecuciones</span>
-            <a href="{% url 'exportar_csv' %}" class="btn btn-outline-success btn-sm">
-                <i class="bi bi-filetype-csv me-1"></i> Exportar CSV
+            <a href="{% url 'subir_csv' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-cloud-upload me-1"></i> Subir Dataset
             </a>
-            <a href="{% url 'exportar_excel' %}" class="btn btn-success btn-sm">
-                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
-            </a>
+            {% if historial %}
+            <form method="POST" action="{% url 'eliminar_todos_logs' %}"
+                  onsubmit="return confirm('¿Eliminar TODO el historial ETL? Esta acción no se puede deshacer.')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-trash me-1"></i> Limpiar todo
+                </button>
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -29,39 +38,92 @@
                     <th>Tiempo</th>
                     <th>Estado</th>
                     <th>Detalle</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
-                {% for h in historial %}
+                {% for log in historial %}
                 <tr>
-                    <td class="text-muted small">{{ h.id }}</td>
-                    <td class="small">{{ h.fecha_ejecucion|date:"d/m/Y H:i" }}</td>
-                    <td class="small">{{ h.usuario|default:"Sistema" }}</td>
-                    <td class="small text-muted">{{ h.archivo_fuente|truncatechars:25 }}</td>
-                    <td><span class="badge bg-primary">{{ h.registros_procesados }}</span></td>
-                    <td><span class="badge bg-danger">{{ h.registros_fallidos }}</span></td>
-                    <td class="small">{{ h.tiempo_ejecucion }}s</td>
+                    <td class="text-muted small">{{ log.id }}</td>
+                    <td class="small">{{ log.fecha_ejecucion|date:"d/m/Y H:i" }}</td>
+                    <td class="small">
+                        {% if log.usuario %}
+                            {{ log.usuario.username }}
+                            <span class="text-muted">— {{ log.usuario.get_role_display }}</span>
+                        {% else %}
+                            <span class="text-muted">Sistema</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-truncate" style="max-width:160px" title="{{ log.archivo_fuente }}">
+                        {{ log.archivo_fuente }}
+                    </td>
+                    <td class="fw-semibold text-success">{{ log.registros_procesados }}</td>
+                    <td class="{% if log.registros_fallidos > 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                        {{ log.registros_fallidos }}
+                    </td>
+                    <td class="small text-muted">{{ log.tiempo_ejecucion }}s</td>
                     <td>
-                        {% if h.estado == 'exitoso' %}
+                        {% if log.estado == 'exitoso' %}
                             <span class="badge bg-success">Exitoso</span>
-                        {% elif h.estado == 'fallido' %}
+                        {% elif log.estado == 'fallido' %}
                             <span class="badge bg-danger">Fallido</span>
                         {% else %}
-                            <span class="badge bg-secondary">En proceso</span>
+                            <span class="badge bg-warning text-dark">En proceso</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if h.mensaje_error %}
-                        <span class="text-danger small">{{ h.mensaje_error|truncatechars:30 }}</span>
+                        {% if log.log_detalle %}
+                        <button class="btn btn-outline-secondary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalLog{{ log.id }}">
+                            <i class="bi bi-file-text"></i>
+                        </button>
                         {% else %}
-                        <span class="text-muted small">—</span>
+                        <span class="text-muted">—</span>
                         {% endif %}
                     </td>
+                    <td>
+                        <form method="POST" action="{% url 'eliminar_log' log.id %}"
+                              onsubmit="return confirm('¿Eliminar esta ejecución del historial?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
+
+                <!-- Modal detalle -->
+                {% if log.log_detalle %}
+                <div class="modal fade" id="modalLog{{ log.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title">
+                                    <i class="bi bi-file-text me-2"></i>
+                                    Detalle — Ejecución #{{ log.id }}
+                                </h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <pre class="bg-light p-3 rounded small" style="max-height:400px;overflow-y:auto">{{ log.log_detalle }}</pre>
+                                {% if log.mensaje_error %}
+                                <div class="alert alert-danger mt-3 small">
+                                    <strong>Error:</strong><br>
+                                    <pre class="mb-0">{{ log.mensaje_error }}</pre>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
-                        No hay ejecuciones ETL registradas aún.
+                    <td colspan="10" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        No hay ejecuciones ETL registradas.
                     </td>
                 </tr>
                 {% endfor %}

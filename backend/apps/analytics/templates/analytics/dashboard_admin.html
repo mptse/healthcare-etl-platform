@@ -2,30 +2,31 @@
 {% block page_title %}Dashboard Administrador{% endblock %}
 
 {% block content %}
+
 <!-- KPIs fila 1 -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card p-3 position-relative overflow-hidden">
             <div class="text-muted small">Total Registros</div>
             <div class="fs-2 fw-bold text-primary">{{ total_registros }}</div>
             <i class="bi bi-database-fill position-absolute text-primary opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card success p-3 position-relative overflow-hidden">
             <div class="text-muted small">Total Pacientes</div>
             <div class="fs-2 fw-bold text-success">{{ total_pacientes }}</div>
             <i class="bi bi-people-fill position-absolute text-success opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card danger p-3 position-relative overflow-hidden">
             <div class="text-muted small">Pacientes Críticos</div>
             <div class="fs-2 fw-bold text-danger">{{ criticos }}</div>
             <i class="bi bi-exclamation-triangle-fill position-absolute text-danger opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card warning p-3 position-relative overflow-hidden">
             <div class="text-muted small">Riesgo Alto</div>
             <div class="fs-2 fw-bold text-warning">{{ alto }}</div>
@@ -36,25 +37,25 @@
 
 <!-- KPIs fila 2 -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card info p-3">
             <div class="text-muted small">Fumadores</div>
             <div class="fs-3 fw-bold text-info">{{ fumadores }}</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card danger p-3">
             <div class="text-muted small">Hipertensos</div>
             <div class="fs-3 fw-bold text-danger">{{ hipertensos }}</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card warning p-3">
             <div class="text-muted small">Diabéticos</div>
             <div class="fs-3 fw-bold text-warning">{{ diabeticos }}</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card p-3">
             <div class="text-muted small">Sat. O₂ Baja</div>
             <div class="fs-3 fw-bold text-primary">{{ saturacion_baja }}</div>
@@ -64,22 +65,22 @@
 
 <!-- Gráficas -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Distribución de Riesgo</h6>
-            <canvas id="riesgoChart" height="220"></canvas>
+            <canvas id="riesgoChart"></canvas>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-gender-ambiguous me-2 text-info"></i>Distribución por Sexo</h6>
-            <canvas id="sexoChart" height="220"></canvas>
+            <canvas id="sexoChart"></canvas>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-people me-2 text-success"></i>Grupos de Edad</h6>
-            <canvas id="edadChart" height="220"></canvas>
+            <canvas id="edadChart"></canvas>
         </div>
     </div>
 </div>
@@ -87,43 +88,43 @@
 <!-- Promedios -->
 <div class="card p-4 mb-4">
     <h6 class="fw-semibold mb-3"><i class="bi bi-clipboard2-data me-2 text-secondary"></i>Promedios Clínicos Poblacionales</h6>
-    <div class="row g-3">
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+    <div class="row g-2">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">Glucosa</div>
                 <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_glucosa|floatformat:1 }}</div>
                 <small class="text-muted">mg/dL</small>
             </div>
         </div>
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">Colesterol</div>
                 <div class="fs-5 fw-bold text-warning">{{ promedios.promedio_colesterol|floatformat:1 }}</div>
                 <small class="text-muted">mg/dL</small>
             </div>
         </div>
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">IMC</div>
                 <div class="fs-5 fw-bold text-info">{{ promedios.promedio_imc|floatformat:1 }}</div>
             </div>
         </div>
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">Presión Sis.</div>
                 <div class="fs-5 fw-bold text-danger">{{ promedios.promedio_presion_sis|floatformat:0 }}</div>
                 <small class="text-muted">mmHg</small>
             </div>
         </div>
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">Frec. Card.</div>
                 <div class="fs-5 fw-bold text-success">{{ promedios.promedio_frecuencia|floatformat:0 }}</div>
                 <small class="text-muted">bpm</small>
             </div>
         </div>
-        <div class="col-md-2 col-4">
-            <div class="bg-light rounded p-3 text-center">
+        <div class="col-4 col-md-2">
+            <div class="bg-light rounded p-2 text-center">
                 <div class="text-muted small">Sat. O₂</div>
                 <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_saturacion|floatformat:1 }}</div>
                 <small class="text-muted">%</small>

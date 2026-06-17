@@ -5,28 +5,28 @@
 
 <!-- KPIs -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card p-3 position-relative overflow-hidden">
             <div class="text-muted small">Total Pacientes</div>
             <div class="fs-2 fw-bold text-primary">{{ total_pacientes }}</div>
             <i class="bi bi-people-fill position-absolute text-primary opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card danger p-3 position-relative overflow-hidden">
             <div class="text-muted small">Pacientes Críticos</div>
             <div class="fs-2 fw-bold text-danger">{{ resumen_riesgo.Crítico|default:0 }}</div>
             <i class="bi bi-exclamation-triangle-fill position-absolute text-danger opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card warning p-3 position-relative overflow-hidden">
             <div class="text-muted small">Riesgo Alto</div>
             <div class="fs-2 fw-bold text-warning">{{ resumen_riesgo.Alto|default:0 }}</div>
             <i class="bi bi-arrow-up-circle-fill position-absolute text-warning opacity-10" style="font-size:4rem;right:10px;bottom:-10px"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card kpi-card success p-3 position-relative overflow-hidden">
             <div class="text-muted small">Riesgo Bajo</div>
             <div class="fs-2 fw-bold text-success">{{ resumen_riesgo.Bajo|default:0 }}</div>
@@ -37,40 +37,40 @@
 
 <!-- Gráficas fila 1 -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Distribución por Riesgo</h6>
-            <canvas id="riesgoChart" height="230"></canvas>
+            <canvas id="riesgoChart"></canvas>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-gender-ambiguous me-2 text-info"></i>Distribución por Sexo</h6>
-            <canvas id="sexoChart" height="230"></canvas>
+            <canvas id="sexoChart"></canvas>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-4">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-fill me-2 text-success"></i>Grupos de Edad</h6>
-            <canvas id="edadChart" height="230"></canvas>
+            <canvas id="edadChart"></canvas>
         </div>
     </div>
 </div>
 
 <!-- Gráficas fila 2 -->
 <div class="row g-3 mb-4">
-    <div class="col-md-5">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-5">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-activity me-2 text-warning"></i>Clasificación IMC</h6>
-            <canvas id="imcChart" height="200"></canvas>
+            <canvas id="imcChart"></canvas>
         </div>
     </div>
-    <div class="col-md-7">
-        <div class="card p-4 h-100">
+    <div class="col-12 col-md-7">
+        <div class="card p-4">
             <h6 class="fw-semibold mb-3"><i class="bi bi-clipboard2-pulse me-2 text-danger"></i>Promedios Clínicos</h6>
             <div class="row g-2">
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">Glucosa</div>
                         <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_glucosa|floatformat:1 }} <small class="text-muted fs-6">mg/dL</small></div>
                         {% if estadisticas.glucosa %}
@@ -78,8 +78,8 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">Colesterol</div>
                         <div class="fs-5 fw-bold text-warning">{{ promedios.promedio_colesterol|floatformat:1 }} <small class="text-muted fs-6">mg/dL</small></div>
                         {% if estadisticas.colesterol %}
@@ -87,8 +87,8 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">IMC</div>
                         <div class="fs-5 fw-bold text-info">{{ promedios.promedio_imc|floatformat:1 }}</div>
                         {% if estadisticas.imc %}
@@ -96,8 +96,8 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">Presión Sistólica</div>
                         <div class="fs-5 fw-bold text-danger">{{ promedios.promedio_presion_sis|floatformat:0 }} <small class="text-muted fs-6">mmHg</small></div>
                         {% if estadisticas.presion_sistolica %}
@@ -105,14 +105,14 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">Frec. Cardíaca</div>
                         <div class="fs-5 fw-bold text-success">{{ promedios.promedio_frecuencia|floatformat:0 }} <small class="text-muted fs-6">bpm</small></div>
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="bg-light rounded p-3 text-center">
+                <div class="col-6 col-md-6">
+                    <div class="bg-light rounded p-2 text-center">
                         <div class="text-muted small">Saturación O₂</div>
                         <div class="fs-5 fw-bold text-primary">{{ promedios.promedio_saturacion|floatformat:1 }}<small class="text-muted fs-6">%</small></div>
                     </div>
