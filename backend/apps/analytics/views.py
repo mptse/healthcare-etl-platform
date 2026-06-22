@@ -65,7 +65,11 @@ def dashboard_admin(request):
         'labels_sexo': [s['sexo'] for s in segmentacion['por_sexo']],
         'datos_edad': list(segmentacion['por_edad'].values()),
         'labels_edad': list(segmentacion['por_edad'].keys()),
+
     })
+
+    context['pacientes_lista'] = RegistroClinico.objects.select_related('paciente').order_by('-fecha_consulta')
+
     return render(request, 'analytics/dashboard_admin.html', context)
 
 

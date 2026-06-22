@@ -133,6 +133,120 @@
     </div>
 </div>
 
+<!-- ── Lista de pacientes (igual que dashboard médico) ── -->
+<div class="card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-semibold mb-0">
+            <i class="bi bi-people me-2 text-primary"></i>Lista de Pacientes
+        </h6>
+        <div class="d-flex gap-2">
+            <a href="{% url 'exportar_csv' %}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-filetype-csv me-1"></i> CSV
+            </a>
+            <a href="{% url 'exportar_excel' %}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+            </a>
+            <a href="{% url 'exportar_pdf' %}" class="btn btn-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+            <input type="text" id="buscarNombre" class="form-control"
+                   placeholder="Buscar por nombre o apellido...">
+        </div>
+        <div class="col-6 col-md-3">
+            <select id="filtroRiesgo" class="form-select">
+                <option value="">Todos los riesgos</option>
+                <option value="Crítico">Crítico</option>
+                <option value="Alto">Alto</option>
+                <option value="Medio">Medio</option>
+                <option value="Bajo">Bajo</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-3 d-flex align-items-center">
+            <span class="badge bg-primary rounded-pill" id="contadorResultados">
+                {{ pacientes_lista|length }} pacientes
+            </span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle" style="min-width:700px">
+            <thead class="table-light">
+                <tr>
+                    <th>Paciente</th>
+                    <th>Edad</th>
+                    <th>Sexo</th>
+                    <th>Diagnóstico</th>
+                    <th>Glucosa</th>
+                    <th>Presión</th>
+                    <th>Sat. O₂</th>
+                    <th>Riesgo</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTablaAdmin">
+                {% for r in pacientes_lista %}
+                <tr class="fila-admin"
+                    data-nombre="{{ r.paciente.nombres|lower }} {{ r.paciente.apellidos|lower }}"
+                    data-riesgo="{{ r.riesgo_enfermedad }}">
+                    <td>
+                        <strong>{{ r.paciente.nombres }} {{ r.paciente.apellidos }}</strong><br>
+                        <small class="text-muted">{{ r.paciente.identificacion }}</small>
+                    </td>
+                    <td>{{ r.paciente.edad }}</td>
+                    <td>{{ r.paciente.sexo }}</td>
+                    <td><small>{{ r.diagnostico_preliminar }}</small></td>
+                    <td>
+                        {% if r.glucosa > 300 %}
+                            <span class="text-danger fw-bold">{{ r.glucosa }}</span>
+                        {% else %}{{ r.glucosa }}{% endif %}
+                    </td>
+                    <td>
+                        {% if r.presion_sistolica > 180 %}
+                            <span class="text-danger fw-bold">{{ r.presion_sistolica }}/{{ r.presion_diastolica }}</span>
+                        {% else %}{{ r.presion_sistolica }}/{{ r.presion_diastolica }}{% endif %}
+                    </td>
+                    <td>
+                        {% if r.saturacion_oxigeno < 85 %}
+                            <span class="text-danger fw-bold">{{ r.saturacion_oxigeno }}%</span>
+                        {% elif r.saturacion_oxigeno < 90 %}
+                            <span class="text-warning fw-bold">{{ r.saturacion_oxigeno }}%</span>
+                        {% else %}{{ r.saturacion_oxigeno }}%{% endif %}
+                    </td>
+                    <td>
+                        {% if r.riesgo_enfermedad == 'Crítico' %}
+                            <span class="badge bg-danger">Crítico</span>
+                        {% elif r.riesgo_enfermedad == 'Alto' %}
+                            <span class="badge bg-warning text-dark">Alto</span>
+                        {% elif r.riesgo_enfermedad == 'Medio' %}
+                            <span class="badge bg-info text-dark">Medio</span>
+                        {% else %}
+                            <span class="badge bg-success">Bajo</span>
+                        {% endif %}
+                    </td>
+                    <td><small>{{ r.fecha_consulta }}</small></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        No hay pacientes registrados. Ejecuta el ETL primero.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div id="mensajeVacioAdmin" class="text-center text-muted py-4 d-none">
+            No se encontraron pacientes con los filtros aplicados.
+        </div>
+    </div>
+</div>
+
 {{ bajo|json_script:"d-bajo" }}
 {{ medio|json_script:"d-medio" }}
 {{ alto|json_script:"d-alto" }}
@@ -178,6 +292,32 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
+
+    // Filtro de pacientes
+    const inputNombre  = document.getElementById('buscarNombre');
+    const selectRiesgo = document.getElementById('filtroRiesgo');
+    const filas        = document.querySelectorAll('.fila-admin');
+    const contador     = document.getElementById('contadorResultados');
+    const mensajeVacio = document.getElementById('mensajeVacioAdmin');
+
+    function filtrar() {
+        const nombre = inputNombre.value.toLowerCase().trim();
+        const riesgo = selectRiesgo.value;
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const ok = (nombre === '' || fila.dataset.nombre.includes(nombre))
+                    && (riesgo === '' || fila.dataset.riesgo === riesgo);
+            fila.style.display = ok ? '' : 'none';
+            if (ok) visibles++;
+        });
+
+        contador.textContent = visibles + ' pacientes';
+        mensajeVacio.classList.toggle('d-none', visibles > 0);
+    }
+
+    inputNombre.addEventListener('input', filtrar);
+    selectRiesgo.addEventListener('change', filtrar);
 });
 </script>
 {% endblock %}
