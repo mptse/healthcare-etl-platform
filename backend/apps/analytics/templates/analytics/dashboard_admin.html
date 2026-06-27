@@ -273,15 +273,23 @@ document.addEventListener('DOMContentLoaded', function () {
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 
-    new Chart(document.getElementById('sexoChart'), {
-        type: 'pie',
-        data: {
-            labels: parse('labels-sexo'),
-            datasets: [{ data: parse('datos-sexo'),
-                backgroundColor: ['#0d6efd','#e83e8c','#6c757d'], borderWidth: 2 }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
+   const labelsSexo = parse('labels-sexo');
+const datosSexo = parse('datos-sexo');
+const coloresSexo = labelsSexo.map(l => {
+    if (l === 'Masculino') return '#0d6efd';
+    if (l === 'Femenino') return '#e83e8c';
+    return '#6c757d';
+});
+
+new Chart(document.getElementById('sexoChart'), {
+    type: 'pie',
+    data: {
+        labels: labelsSexo,
+        datasets: [{ data: datosSexo,
+            backgroundColor: coloresSexo, borderWidth: 2 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
 
     new Chart(document.getElementById('edadChart'), {
         type: 'bar',

@@ -74,7 +74,7 @@
                 <tr>
                     <th>Paciente</th><th>Edad</th><th>Sexo</th>
                     <th>Diagnóstico</th><th>Glucosa</th><th>Presión</th>
-                    <th>Sat. O₂</th><th>Riesgo</th><th>Fecha</th>
+                    <th>Sat. O₂</th><th>IMC</th><th>Riesgo</th><th>Fecha</th>
                 </tr>
             </thead>
             <tbody id="cuerpoTabla">
@@ -106,6 +106,7 @@
                             <span class="text-warning fw-bold">{{ r.saturacion_oxigeno }}%</span>
                         {% else %}{{ r.saturacion_oxigeno }}%{% endif %}
                     </td>
+                     <td>{{ r.imc|floatformat:1 }}</td>
                     <td>
                         {% if r.riesgo_enfermedad == 'Crítico' %}<span class="badge bg-danger">Crítico</span>
                         {% elif r.riesgo_enfermedad == 'Alto' %}<span class="badge bg-warning text-dark">Alto</span>

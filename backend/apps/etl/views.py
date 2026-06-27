@@ -1,5 +1,6 @@
 import os
 import csv
+import threading
 import tempfile
 from datetime import datetime
 
@@ -139,49 +140,93 @@ def subir_csv(request):
             messages.error(request, 'Solo se permiten archivos CSV o Excel (.xlsx).')
             return redirect('subir_csv')
 
-        sufijo = '.xlsx' if archivo.name.endswith('.xlsx') else '.csv'
-        with tempfile.NamedTemporaryFile(delete=False, suffix=sufijo) as tmp:
-            for chunk in archivo.chunks():
-                tmp.write(chunk)
-            ruta = tmp.name
-
-        log = ETLLog.objects.create(
-            usuario=request.user,
-            estado='en_proceso',
-            archivo_fuente=archivo.name,
-        )
-
-        resultado = run_etl(ruta)  # ← retorna dict
-
-        log.registros_procesados = resultado.get('registros_procesados', 0)
-        log.registros_fallidos   = resultado.get('registros_fallidos', 0)
-        log.tiempo_ejecucion     = resultado.get('tiempo_ejecucion', 0.0)
-        log.log_detalle          = resultado.get('log_detalle', '')
-        log.mensaje_error        = resultado.get('mensaje_error', '')
-        log.estado               = 'exitoso' if resultado.get('exito') else 'fallido'
-        log.save()
-
-        if resultado.get('exito'):
-            try:
-                from apps.ml.trainer import entrenar_modelo
-                entrenar_modelo()
-            except Exception:
-                pass
-            messages.success(
-                request,
-                f'✓ "{archivo.name}" procesado: '
-                f'{log.registros_procesados} registros en {log.tiempo_ejecucion}s.'
-            )
-        else:
-            messages.error(
-                request,
-                f'Error al procesar "{archivo.name}". Revisa el historial.'
-            )
+        limpiar = request.POST.get('limpiar_bd') == 'on'
+        sufijo  = '.xlsx' if archivo.name.endswith('.xlsx') else '.csv'
+        tmp_path = None
 
         try:
-            os.remove(ruta)
-        except Exception:
-            pass
+            # Guardar archivo temporal
+            with tempfile.NamedTemporaryFile(delete=False, suffix=sufijo) as tmp:
+                for chunk in archivo.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            # Verificar que el archivo temporal existe y tiene contenido
+            tamanio = os.path.getsize(tmp_path)
+            if tamanio == 0:
+                messages.error(request, 'El archivo está vacío.')
+                return redirect('subir_csv')
+
+            # Limpiar BD si se solicitó
+            if limpiar:
+                from apps.etl.models import Paciente
+                RegistroClinico.objects.all().delete()
+                Paciente.objects.all().delete()
+
+            log = ETLLog.objects.create(
+                usuario=request.user,
+                estado='en_proceso',
+                archivo_fuente=archivo.name,
+            )
+
+            # ── Ejecutar ETL en hilo separado para evitar timeout ──
+            resultado_holder = {}
+
+            def correr_etl():
+                resultado_holder['res'] = run_etl(tmp_path)
+
+            hilo = threading.Thread(target=correr_etl)
+            hilo.start()
+            hilo.join(timeout=180)  # espera máximo 3 minutos
+
+            resultado = resultado_holder.get('res', {
+                'exito': False,
+                'mensaje_error': 'El ETL tardó demasiado (>3 min) o no respondió. Revisa el servidor.',
+                'log_detalle': 'Timeout al ejecutar el ETL.',
+                'registros_procesados': 0,
+                'registros_fallidos': 0,
+                'tiempo_ejecucion': 180,
+            })
+
+            # Actualizar log con resultado
+            log.registros_procesados = resultado.get('registros_procesados', 0)
+            log.registros_fallidos   = resultado.get('registros_fallidos', 0)
+            log.tiempo_ejecucion     = resultado.get('tiempo_ejecucion', 0.0)
+            log.log_detalle          = resultado.get('log_detalle', '')
+            log.mensaje_error        = resultado.get('mensaje_error', '')
+            log.estado               = 'exitoso' if resultado.get('exito') else 'fallido'
+            log.save()
+
+            if resultado.get('exito'):
+                messages.success(
+                    request,
+                    f'✓ "{archivo.name}" procesado: '
+                    f'{log.registros_procesados} registros en {log.tiempo_ejecucion}s.'
+                )
+            else:
+                error_corto = resultado.get('mensaje_error', 'Error desconocido')[:300]
+                messages.error(
+                    request,
+                    f'Error al procesar "{archivo.name}": {error_corto}'
+                )
+
+        except Exception as e:
+            import traceback
+            error_msg = traceback.format_exc()
+            messages.error(request, f'Error inesperado: {str(e)}')
+            try:
+                log.estado        = 'fallido'
+                log.mensaje_error = error_msg
+                log.save()
+            except Exception:
+                pass
+
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
 
         return redirect('historial_etl')
 
@@ -208,22 +253,20 @@ def eliminar_todos_logs(request):
         messages.success(request, f'{total} registros eliminados del historial.')
     return redirect('historial_etl')
 
+
 # ── Exportación ──────────────────────────────────────────────────────
 
 @login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
 def exportar_csv(request):
-    # Creamos un generador para enviar los datos por partes (streaming)
     def generar_csv():
-
         yield '\ufeff'
-        # Usamos un objeto que Django pueda escribir
+
         class Echo:
             def write(self, value): return value
 
         writer = csv.writer(Echo())
-        
-        # Escribir cabecera
+
         yield writer.writerow([
             'ID', 'Nombres', 'Apellidos', 'Edad', 'Sexo',
             'Peso', 'Altura', 'IMC', 'Presión Sistólica', 'Presión Diastólica',
@@ -232,9 +275,8 @@ def exportar_csv(request):
             'Diagnóstico', 'Riesgo', 'Fecha Consulta'
         ])
 
-        # Usamos .iterator() para no cargar todo en RAM
         registros = RegistroClinico.objects.select_related('paciente').iterator()
-        
+
         for r in registros:
             yield writer.writerow([
                 r.paciente.identificacion, r.paciente.nombres, r.paciente.apellidos,
@@ -252,6 +294,7 @@ def exportar_csv(request):
     response = StreamingHttpResponse(generar_csv(), content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="pacientes_clinicos.csv"'
     return response
+
 
 @login_required
 @role_required(allowed_roles=['Analista', 'Admin', 'Médico'])
@@ -341,7 +384,6 @@ def exportar_pdf(request):
     styles = getSampleStyleSheet()
     elementos = []
 
-    # Título
     titulo_style = ParagraphStyle(
         'titulo', parent=styles['Title'],
         fontSize=16, textColor=colors.HexColor('#0d6efd'),
@@ -360,7 +402,6 @@ def exportar_pdf(request):
     ))
     elementos.append(Spacer(1, 0.3*cm))
 
-    # Tabla
     headers = [
         'Paciente', 'Edad', 'Sexo', 'Glucosa',
         'Presión', 'Sat. O₂', 'IMC', 'Diagnóstico', 'Riesgo', 'Fecha'
