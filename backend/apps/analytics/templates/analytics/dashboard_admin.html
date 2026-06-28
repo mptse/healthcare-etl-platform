@@ -1,3 +1,5 @@
+**`dashboard_admin.html`**
+
 {% extends 'base.html' %}
 {% block page_title %}Dashboard Administrador{% endblock %}
 
@@ -187,7 +189,7 @@
                     <th>Sat. O₂</th>
                     <th>Riesgo</th>
                     <th>Fecha</th>
-                    <th>Acción</th>
+                    <th>accion</th>
                 </tr>
             </thead>
             <tbody id="cuerpoTablaAdmin">
@@ -300,6 +302,14 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+.modal-title { color: var(--bs-dark) !important; }
+.modal-body { color: var(--bs-dark) !important; }
+
+#resultadoPrediccion .alert { background-color: #fff !important; }
+#resultadoPrediccion .alert * { color: #212529 !important; }
+#resultadoPrediccion .progress-bar { color: transparent !important; }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const parse = id => JSON.parse(document.getElementById(id).textContent);
@@ -315,23 +325,23 @@ document.addEventListener('DOMContentLoaded', function () {
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 
-   const labelsSexo = parse('labels-sexo');
-const datosSexo = parse('datos-sexo');
-const coloresSexo = labelsSexo.map(l => {
-    if (l === 'Masculino') return '#0d6efd';
-    if (l === 'Femenino') return '#e83e8c';
-    return '#6c757d';
-});
+    const labelsSexo = parse('labels-sexo');
+    const datosSexo = parse('datos-sexo');
+    const coloresSexo = labelsSexo.map(l => {
+        if (l === 'Masculino') return '#0d6efd';
+        if (l === 'Femenino') return '#e83e8c';
+        return '#6c757d';
+    });
 
-new Chart(document.getElementById('sexoChart'), {
-    type: 'pie',
-    data: {
-        labels: labelsSexo,
-        datasets: [{ data: datosSexo,
-            backgroundColor: coloresSexo, borderWidth: 2 }]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-});
+    new Chart(document.getElementById('sexoChart'), {
+        type: 'pie',
+        data: {
+            labels: labelsSexo,
+            datasets: [{ data: datosSexo,
+                backgroundColor: coloresSexo, borderWidth: 2 }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
 
     new Chart(document.getElementById('edadChart'), {
         type: 'bar',
@@ -409,16 +419,17 @@ function cargarPrediccion(fila) {
                 const c = colores[clase] || 'secondary';
                 barras += `
                     <div class="d-flex justify-content-between small mb-1">
-                        <span>${clase}</span><span>${prob}%</span>
+                        <span class="fw-semibold">${clase}</span>
+                        <span class="fw-bold">${prob}%</span>
                     </div>
-                    <div class="progress mb-2" style="height:8px">
+                    <div class="progress mb-3" style="height:10px">
                         <div class="progress-bar bg-${c}" style="width:${prob}%"></div>
                     </div>`;
             }
             document.getElementById('resultadoPrediccion').innerHTML = `
-                <div class="alert alert-${color} text-start">
-                    <h6 class="mb-2">Riesgo predicho: <strong>${data.riesgo}</strong></h6>
-                    ${data.riesgo_clinico ? `<small class="text-muted">Reglas clínicas: <strong>${data.riesgo_clinico}</strong></small>` : ''}
+                <div class="alert alert-${color} text-start p-3">
+                    <h6 class="mb-2 fw-bold">Riesgo predicho: <strong>${data.riesgo}</strong></h6>
+                    ${data.riesgo_clinico ? `<p class="small mb-2">Reglas clínicas: <strong>${data.riesgo_clinico}</strong></p>` : ''}
                     <hr class="my-2">
                     ${barras}
                 </div>`;
