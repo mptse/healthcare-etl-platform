@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -48,6 +49,31 @@ def ml_dashboard(request):
         'prediccion': prediccion,
         'historial':  historial,
     })
+
+
+# ── Vista predicción por paciente (para modal en dashboards) ─────────
+@login_required
+@role_required(allowed_roles=['Médico', 'Admin', 'Analista'])
+def predecir_paciente(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    try:
+        resultado = predecir_riesgo(
+            edad=float(request.POST.get('edad', 0)),
+            imc=float(request.POST.get('imc', 0)),
+            glucosa=float(request.POST.get('glucosa', 0)),
+            colesterol=float(request.POST.get('colesterol', 0)),
+            presion_sis=float(request.POST.get('presion_sis', 0)),
+            presion_dias=float(request.POST.get('presion_dias', 0)),
+            frecuencia=float(request.POST.get('frecuencia', 0)),
+            saturacion=float(request.POST.get('saturacion', 0)),
+            temperatura=float(request.POST.get('temperatura', 0)),
+            fumador=request.POST.get('fumador') == 'true',
+            consumo_alcohol=request.POST.get('consumo_alcohol') == 'true',
+        )
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 # ── APIs REST ────────────────────────────────────────────────────────

@@ -187,13 +187,25 @@
                     <th>Sat. O₂</th>
                     <th>Riesgo</th>
                     <th>Fecha</th>
+                    <th>Acción</th>
                 </tr>
             </thead>
             <tbody id="cuerpoTablaAdmin">
                 {% for r in pacientes_lista %}
                 <tr class="fila-admin"
                     data-nombre="{{ r.paciente.nombres|lower }} {{ r.paciente.apellidos|lower }}"
-                    data-riesgo="{{ r.riesgo_enfermedad }}">
+                    data-riesgo="{{ r.riesgo_enfermedad }}"
+                    data-edad="{{ r.paciente.edad }}"
+                    data-imc="{{ r.imc }}"
+                    data-glucosa="{{ r.glucosa }}"
+                    data-colesterol="{{ r.colesterol }}"
+                    data-presion-sis="{{ r.presion_sistolica }}"
+                    data-presion-dias="{{ r.presion_diastolica }}"
+                    data-frecuencia="{{ r.frecuencia_cardiaca }}"
+                    data-saturacion="{{ r.saturacion_oxigeno }}"
+                    data-temperatura="{{ r.temperatura }}"
+                    data-fumador="{{ r.fumador }}"
+                    data-alcohol="{{ r.consumo_alcohol }}">
                     <td>
                         <strong>{{ r.paciente.nombres }} {{ r.paciente.apellidos }}</strong><br>
                         <small class="text-muted">{{ r.paciente.identificacion }}</small>
@@ -230,10 +242,18 @@
                         {% endif %}
                     </td>
                     <td><small>{{ r.fecha_consulta }}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPrediccion"
+                                onclick="cargarPrediccion(this.closest('tr'))">
+                            <i class="bi bi-lightning-fill"></i>
+                        </button>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
+                    <td colspan="10" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                         No hay pacientes registrados. Ejecuta el ETL primero.
                     </td>
@@ -243,6 +263,28 @@
         </table>
         <div id="mensajeVacioAdmin" class="text-center text-muted py-4 d-none">
             No se encontraron pacientes con los filtros aplicados.
+        </div>
+    </div>
+</div>
+
+<!-- Modal Predicción de Riesgo -->
+<div class="modal fade" id="modalPrediccion" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cpu me-2"></i>Predicción de Riesgo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="nombrePacienteModal" class="fw-semibold mb-3 text-primary fs-6"></div>
+                <div id="resultadoPrediccion" class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted small">Calculando...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -327,5 +369,64 @@ new Chart(document.getElementById('sexoChart'), {
     inputNombre.addEventListener('input', filtrar);
     selectRiesgo.addEventListener('change', filtrar);
 });
+
+function cargarPrediccion(fila) {
+    const nombre = fila.querySelector('strong').textContent;
+    document.getElementById('nombrePacienteModal').textContent = 'Paciente: ' + nombre;
+    document.getElementById('resultadoPrediccion').innerHTML = `
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted small">Calculando predicción...</p>`;
+
+    const form = new FormData();
+    form.append('edad',           fila.dataset.edad);
+    form.append('imc',            fila.dataset.imc);
+    form.append('glucosa',        fila.dataset.glucosa);
+    form.append('colesterol',     fila.dataset.colesterol);
+    form.append('presion_sis',    fila.dataset.presionSis);
+    form.append('presion_dias',   fila.dataset.presionDias);
+    form.append('frecuencia',     fila.dataset.frecuencia);
+    form.append('saturacion',     fila.dataset.saturacion);
+    form.append('temperatura',    fila.dataset.temperatura);
+    form.append('fumador',        fila.dataset.fumador === 'True' ? 'true' : 'false');
+    form.append('consumo_alcohol',fila.dataset.alcohol === 'True' ? 'true' : 'false');
+    form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch('/ml/predecir-paciente/', { method: 'POST', body: form })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('resultadoPrediccion').innerHTML =
+                    `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            const colores = {
+                'Crítico': 'danger', 'Alto': 'warning',
+                'Medio': 'info', 'Bajo': 'success'
+            };
+            const color = colores[data.riesgo] || 'secondary';
+            let barras = '';
+            for (const [clase, prob] of Object.entries(data.probabilidades)) {
+                const c = colores[clase] || 'secondary';
+                barras += `
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>${clase}</span><span>${prob}%</span>
+                    </div>
+                    <div class="progress mb-2" style="height:8px">
+                        <div class="progress-bar bg-${c}" style="width:${prob}%"></div>
+                    </div>`;
+            }
+            document.getElementById('resultadoPrediccion').innerHTML = `
+                <div class="alert alert-${color} text-start">
+                    <h6 class="mb-2">Riesgo predicho: <strong>${data.riesgo}</strong></h6>
+                    ${data.riesgo_clinico ? `<small class="text-muted">Reglas clínicas: <strong>${data.riesgo_clinico}</strong></small>` : ''}
+                    <hr class="my-2">
+                    ${barras}
+                </div>`;
+        })
+        .catch(() => {
+            document.getElementById('resultadoPrediccion').innerHTML =
+                '<div class="alert alert-danger">Error al conectar con el servidor.</div>';
+        });
+}
 </script>
 {% endblock %}
